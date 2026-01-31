@@ -21,3 +21,4 @@ temp/
 # Build artifacts
 dist/
 build/
+nohup.out
