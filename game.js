@@ -34,7 +34,7 @@ const gameState = {
     // Items system
     items: [], // Array of produced items
     itemIdCounter: 0, // Counter for generating unique item IDs
-    // Monolith event system
+// Monolith event system
     monolith: {
         discovered: false, // Whether the monolith has been found
         translating: false, // Whether translation is in progress
