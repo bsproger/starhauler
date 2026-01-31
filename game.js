@@ -114,7 +114,10 @@ const eventConfig = {
     basePositiveChance: 0.70,          // 70% base chance for positive events
     researchPositiveBonus: 0.03,       // +3% positive chance per exploration level
     minCooldownDays: 1,                // Minimum cooldown between events
-    maxCooldownDays: 3                 // Maximum cooldown between events
+    maxCooldownDays: 3,                // Maximum cooldown between events
+    // Monolith discovery requirements
+    monolithMinShips: 3,               // Minimum ships required to discover monolith
+    monolithMinExploration: 2          // Minimum exploration research level required
 };
 
 // Production rates
@@ -958,8 +961,8 @@ const explorationEvents = {
             condition: () => {
                 // Only trigger if not yet discovered, have ships, and high exploration level
                 return !gameState.monolith.discovered && 
-                       gameState.ships >= 3 && 
-                       gameState.research.exploration >= 2;
+                       gameState.ships >= eventConfig.monolithMinShips && 
+                       gameState.research.exploration >= eventConfig.monolithMinExploration;
             }
         }
     ],
