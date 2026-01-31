@@ -508,6 +508,114 @@ footer {
     font-size: 1.1em;
 }
 
+/* Tech tree panel styles */
+.tech-tree-panel {
+    grid-column: span 2;
+}
+
+.tech-tree-container {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.tech-tree-container::-webkit-scrollbar {
+    width: 10px;
+}
+
+.tech-tree-container::-webkit-scrollbar-track {
+    background: #0a0a1a;
+}
+
+.tech-tree-container::-webkit-scrollbar-thumb {
+    background: #00ff00;
+    border: 1px solid #006600;
+}
+
+.tech-tree-container::-webkit-scrollbar-thumb:hover {
+    background: #00ff00;
+}
+
+.tech-tier {
+    margin-bottom: 25px;
+}
+
+.tech-tier-title {
+    color: #ffaa00;
+    font-size: 1.2em;
+    margin-bottom: 15px;
+    padding: 8px;
+    background-color: #1a1a2e;
+    border-left: 4px solid #ffaa00;
+}
+
+.tech-item {
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #1a1a2e;
+    border: 1px solid #006600;
+    transition: all 0.3s;
+}
+
+.tech-locked {
+    border-color: #333333;
+    opacity: 0.6;
+}
+
+.tech-available {
+    border-color: #00ff00;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.tech-in_progress {
+    border-color: #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+.tech-complete {
+    border-color: #00ff00;
+    background-color: #1a4d1a;
+}
+
+.tech-header {
+    color: #00ffff;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tech-icon {
+    font-size: 1.5em;
+}
+
+.tech-desc {
+    color: #00ff00;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.tech-prereq {
+    color: #ffaa00;
+    font-size: 0.85em;
+    margin-bottom: 8px;
+    padding: 5px;
+    background-color: #0f0f1f;
+    border-left: 2px solid #ffaa00;
+}
+
+.tech-stats {
+    color: #888;
+    font-size: 0.9em;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 15px;
+}
+
+.tech-btn {
+    margin-top: 10px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     body {

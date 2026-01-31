@@ -35,7 +35,12 @@ const gameState = {
     items: [], // Array of produced items
     itemIdCounter: 0, // Counter for generating unique item IDs
     // Map system
-    mapUnlocked: false // Saturn map unlocked through Starship research
+    mapUnlocked: false, // Saturn map unlocked through Starship research
+    // Tech tree system for interplanetary travel
+    techTree: {
+        researched: [], // IDs of completed technologies
+        inProgress: null // Currently researching technology {id, progress, startDay}
+    }
 };
 
 // Game constants and costs
@@ -55,6 +60,85 @@ const costs = {
     },
     remoteFacility: 500 // Cost to establish a remote facility
 };
+
+// Tech Tree definitions for interplanetary travel
+const techTreeDefinitions = [
+    // Tier 1: Basic Research (unlocked immediately)
+    {
+        id: 'unstable_element_analysis',
+        name: 'Unstable Element Analysis',
+        tier: 1,
+        description: 'Study the properties of unstable elements found in Saturn\'s rings',
+        cost: 50, // unstable elements
+        researchTime: 2, // days
+        prerequisites: [],
+        unlocks: ['advanced_propulsion_theory', 'containment_field_tech']
+    },
+    // Tier 2: Advanced Technologies
+    {
+        id: 'advanced_propulsion_theory',
+        name: 'Advanced Propulsion Theory',
+        tier: 2,
+        description: 'Develop theoretical framework for unstable element-based propulsion',
+        cost: 150,
+        researchTime: 3,
+        prerequisites: ['unstable_element_analysis'],
+        unlocks: ['ion_drive_prototype']
+    },
+    {
+        id: 'containment_field_tech',
+        name: 'Containment Field Technology',
+        tier: 2,
+        description: 'Create stable containment fields for volatile unstable elements',
+        cost: 150,
+        researchTime: 3,
+        prerequisites: ['unstable_element_analysis'],
+        unlocks: ['fuel_stabilization']
+    },
+    // Tier 3: Prototype Systems
+    {
+        id: 'ion_drive_prototype',
+        name: 'Ion Drive Prototype',
+        tier: 3,
+        description: 'Build a working prototype of an unstable element-powered ion drive',
+        cost: 300,
+        researchTime: 4,
+        prerequisites: ['advanced_propulsion_theory'],
+        unlocks: ['interplanetary_navigation']
+    },
+    {
+        id: 'fuel_stabilization',
+        name: 'Fuel Stabilization System',
+        tier: 3,
+        description: 'Develop systems to safely store and utilize unstable elements as fuel',
+        cost: 300,
+        researchTime: 4,
+        prerequisites: ['containment_field_tech'],
+        unlocks: ['interplanetary_navigation']
+    },
+    // Tier 4: Navigation Systems
+    {
+        id: 'interplanetary_navigation',
+        name: 'Interplanetary Navigation',
+        tier: 4,
+        description: 'Advanced navigation systems for long-distance space travel',
+        cost: 500,
+        researchTime: 5,
+        prerequisites: ['ion_drive_prototype', 'fuel_stabilization'],
+        unlocks: ['interplanetary_spaceship']
+    },
+    // Tier 5: Final Goal
+    {
+        id: 'interplanetary_spaceship',
+        name: 'Interplanetary Spaceship',
+        tier: 5,
+        description: 'Construct a fully functional spaceship capable of travel between planets',
+        cost: 1000,
+        researchTime: 7,
+        prerequisites: ['interplanetary_navigation'],
+        unlocks: []
+    }
+];
 
 // Blueprint definitions
 const blueprintDefinitions = [
@@ -412,6 +496,92 @@ function assignItem(itemId) {
     updateUI();
 }
 
+// Tech tree management functions
+function isTechAvailable(techId) {
+    const tech = techTreeDefinitions.find(t => t.id === techId);
+    if (!tech) return false;
+    
+    // Check if already researched
+    if (gameState.techTree.researched.includes(techId)) return false;
+    
+    // Check if currently in progress
+    if (gameState.techTree.inProgress && gameState.techTree.inProgress.id === techId) return false;
+    
+    // Check prerequisites
+    return tech.prerequisites.every(prereqId => gameState.techTree.researched.includes(prereqId));
+}
+
+function startTechResearch(techId) {
+    const tech = techTreeDefinitions.find(t => t.id === techId);
+    if (!tech) return;
+    
+    // Check if available
+    if (!isTechAvailable(techId)) {
+        addLogEntry(`Cannot research ${tech.name} - prerequisites not met.`);
+        return;
+    }
+    
+    // Check if something is already in progress
+    if (gameState.techTree.inProgress) {
+        addLogEntry(`Already researching ${gameState.techTree.inProgress.name}. Complete it first.`);
+        return;
+    }
+    
+    // Check if enough unstable elements
+    if (gameState.unstableElements < tech.cost) {
+        addLogEntry(`Not enough unstable elements for ${tech.name}. Need ${tech.cost}, have ${Math.floor(gameState.unstableElements)}.`);
+        return;
+    }
+    
+    // Start research
+    gameState.unstableElements -= tech.cost;
+    gameState.techTree.inProgress = {
+        id: techId,
+        name: tech.name,
+        progress: 0,
+        startDay: gameState.day,
+        researchTime: tech.researchTime
+    };
+    
+    addLogEntry(`🔬 Started researching ${tech.name}!`);
+    updateUI();
+}
+
+function updateTechProgress() {
+    if (!gameState.techTree.inProgress) return;
+    
+    const progress = gameState.techTree.inProgress;
+    const daysElapsed = gameState.day - progress.startDay;
+    progress.progress = Math.min(100, (daysElapsed / progress.researchTime) * 100);
+    
+    if (progress.progress >= 100) {
+        // Complete the research
+        const tech = techTreeDefinitions.find(t => t.id === progress.id);
+        gameState.techTree.researched.push(progress.id);
+        addLogEntry(`✅ ${progress.name} research complete!`);
+        
+        // Special message for the final spaceship
+        if (progress.id === 'interplanetary_spaceship') {
+            addLogEntry(`🚀 BREAKTHROUGH! Interplanetary Spaceship completed! You can now travel between planets!`);
+        }
+        
+        gameState.techTree.inProgress = null;
+    }
+}
+
+function getTechStatus(techId) {
+    if (gameState.techTree.researched.includes(techId)) {
+        return 'complete';
+    }
+    if (gameState.techTree.inProgress && gameState.techTree.inProgress.id === techId) {
+        return 'in_progress';
+    }
+    if (isTechAvailable(techId)) {
+        return 'available';
+    }
+    return 'locked';
+}
+
 // Update UI
 function updateUI() {
     // Resources
@@ -471,6 +641,9 @@ function updateUI() {
     
     // Items
     updateItemsUI();
+    
+    // Tech Tree
+    updateTechTreeUI();
     
     // Map
     updateMapUI();
@@ -577,6 +750,100 @@ function updatePersonnelUI() {
     // Update upkeep display
     const upkeep = getPersonnelUpkeep();
     document.getElementById('personnel-upkeep').textContent = upkeep;
+}
+
+// Update tech tree UI
+function updateTechTreeUI() {
+    const container = document.getElementById('tech-tree-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // Group techs by tier
+    const tierGroups = {};
+    techTreeDefinitions.forEach(tech => {
+        if (!tierGroups[tech.tier]) {
+            tierGroups[tech.tier] = [];
+        }
+        tierGroups[tech.tier].push(tech);
+    });
+    
+    // Render each tier
+    Object.keys(tierGroups).sort().forEach(tier => {
+        const tierDiv = document.createElement('div');
+        tierDiv.className = 'tech-tier';
+        tierDiv.innerHTML = `<h3 class="tech-tier-title">Tier ${tier}</h3>`;
+        
+        tierGroups[tier].forEach(tech => {
+            const status = getTechStatus(tech.id);
+            const div = document.createElement('div');
+            div.className = `tech-item tech-${status}`;
+            
+            let statusIcon = '';
+            let statusClass = '';
+            let actionButton = '';
+            let progressBar = '';
+            
+            if (status === 'complete') {
+                statusIcon = '✅';
+                statusClass = 'status-complete';
+            } else if (status === 'in_progress') {
+                statusIcon = '🔬';
+                statusClass = 'status-in-progress';
+                const progress = gameState.techTree.inProgress.progress;
+                progressBar = `
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <div class="progress-text">Progress: ${progress.toFixed(0)}%</div>
+                `;
+            } else if (status === 'available') {
+                statusIcon = '🔓';
+                statusClass = 'status-available';
+                actionButton = `
+                    <button class="action-btn tech-btn" onclick="startTechResearch('${tech.id}')" 
+                        ${gameState.unstableElements < tech.cost ? 'disabled' : ''}>
+                        Research (${tech.cost} unstable elements)
+                    </button>
+                `;
+            } else {
+                statusIcon = '🔒';
+                statusClass = 'status-locked';
+            }
+            
+            // Show prerequisites
+            let prereqText = '';
+            if (tech.prerequisites.length > 0) {
+                const prereqNames = tech.prerequisites.map(id => {
+                    const prereqTech = techTreeDefinitions.find(t => t.id === id);
+                    return prereqTech ? prereqTech.name : id;
+                }).join(', ');
+                prereqText = `<div class="tech-prereq">Requires: ${prereqNames}</div>`;
+            }
+            
+            div.innerHTML = `
+                <div class="tech-header">
+                    <span class="tech-icon">${statusIcon}</span>
+                    <strong>${tech.name}</strong>
+                </div>
+                <div class="tech-desc">${tech.description}</div>
+                ${prereqText}
+                <div class="tech-stats">
+                    <span>Cost: ${tech.cost} unstable elements</span>
+                    <span>Time: ${tech.researchTime} days</span>
+                </div>
+                ${progressBar}
+                ${actionButton}
+            `;
+            tierDiv.appendChild(div);
+        });
+        
+        container.appendChild(tierDiv);
+    });
+    
+    if (container.children.length === 0) {
+        container.innerHTML = '<p style="color: #666;">Tech tree not available yet. Establish remote facilities to collect unstable elements.</p>';
+    }
 }
 
 // Update blueprints UI
@@ -999,6 +1266,9 @@ function gameLoop() {
         // Update item production progress
         updateItemProduction();
         
+        // Update tech tree progress
+        updateTechProgress();
+        
         // Process pending repairs
         if (gameState.pendingRepairs && gameState.pendingRepairs.length > 0) {
             const remainingRepairs = [];
@@ -1119,6 +1389,10 @@ function resetGame() {
         gameState.items = [];
         gameState.itemIdCounter = 0;
         gameState.mapUnlocked = false;
+        gameState.techTree = {
+            researched: [],
+            inProgress: null
+        };
         
         // Clear log
         const logContent = document.getElementById('game-log');
@@ -1264,6 +1538,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ensure mapUnlocked exists for old saves
             if (gameState.mapUnlocked === undefined) {
                 gameState.mapUnlocked = false;
+            }
+            // Ensure tech tree exists for old saves
+            if (!gameState.techTree) {
+                gameState.techTree = {
+                    researched: [],
+                    inProgress: null
+                };
             }
             addLogEntry('Resuming from previous session...');
         } catch (e) {
