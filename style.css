@@ -436,6 +436,73 @@ footer {
     background: #00ff00;
 }
 
+/* Monolith panel */
+.monolith-panel {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #4a9eff;
+    box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+}
+
+.monolith-description {
+    color: #a0a0a0;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+}
+
+.monolith-status {
+    margin: 15px 0;
+    font-size: 1.1em;
+}
+
+.monolith-progress {
+    margin: 15px 0;
+}
+
+.monolith-btn {
+    background: linear-gradient(135deg, #4a9eff, #357abd);
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 12px 20px;
+}
+
+.monolith-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #357abd, #2a5f94);
+    transform: scale(1.02);
+}
+
+.monolith-backstory {
+    margin-top: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    border: 2px solid #e94560;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(233, 69, 96, 0.4);
+}
+
+.monolith-backstory h3 {
+    color: #4a9eff;
+    margin-top: 0;
+    text-align: center;
+    font-size: 1.3em;
+}
+
+.monolith-backstory p {
+    line-height: 1.6;
+    margin: 10px 0;
+    text-align: justify;
+}
+
+.monolith-backstory .highlight {
+    color: #e94560;
+    font-weight: bold;
+    text-align: center;
+    font-size: 1.1em;
+    margin-top: 15px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     body {
