@@ -440,7 +440,8 @@ function completeMission(mission) {
         } else if (bonus.type === 'exploration') {
             gameState.activeRewards.explorationBonus = (gameState.activeRewards.explorationBonus || 0) + bonus.value;
         } else if (bonus.type === 'facilityProduction') {
-            // For facility production bonus, we'll add it to the production bonus
+            // Facility production bonuses are intentionally merged with general production bonuses
+            // as they both affect the overall production rate calculation in getProductionRate()
             gameState.activeRewards.productionBonus = (gameState.activeRewards.productionBonus || 0) + bonus.value;
         }
     }
@@ -623,6 +624,16 @@ function assignItem(itemId) {
     updateUI();
 }
 
+// Helper function to get display name for bonus types
+function getBonusDisplayName(bonusType) {
+    const bonusTypeMap = {
+        'production': 'Production',
+        'facilityProduction': 'Production',
+        'exploration': 'Exploration'
+    };
+    return bonusTypeMap[bonusType] || 'Unknown';
+}
+
 // Update celestial bodies exploration UI
 function updateCelestialBodiesUI() {
     const container = document.getElementById('celestial-bodies-list');
@@ -665,7 +676,7 @@ function updateCelestialBodiesUI() {
             if (body.rewards.metal > 0) rewards.push(`${body.rewards.metal} metal`);
             if (body.rewards.unstableElements > 0) rewards.push(`${body.rewards.unstableElements} unstable elements`);
             if (body.rewards.bonus) {
-                const bonusType = body.rewards.bonus.type === 'production' || body.rewards.bonus.type === 'facilityProduction' ? 'Production' : 'Exploration';
+                const bonusType = getBonusDisplayName(body.rewards.bonus.type);
                 rewards.push(`+${(body.rewards.bonus.value * 100).toFixed(0)}% ${bonusType}`);
             }
             html += rewards.join(', ');
