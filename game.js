@@ -33,7 +33,9 @@ const gameState = {
     blueprints: [], // Array of blueprint objects
     // Items system
     items: [], // Array of produced items
-    itemIdCounter: 0 // Counter for generating unique item IDs
+    itemIdCounter: 0, // Counter for generating unique item IDs
+    // Map system
+    mapUnlocked: false // Saturn map unlocked through Starship research
 };
 
 // Game constants and costs
@@ -94,6 +96,19 @@ const blueprintDefinitions = [
         productionCost: 300,
         productionTime: 1,
         bonus: { type: 'facilityProduction', value: 0.20 }
+    },
+    {
+        id: 'starship',
+        name: 'Starship',
+        type: 'Advanced Vessel',
+        description: 'Unlocks Saturn system map for advanced exploration',
+        researchCost: 800,
+        researchTime: 5,
+        designCost: 1000,
+        designTime: 4,
+        productionCost: 600,
+        productionTime: 3,
+        bonus: { type: 'map_unlock', value: 1 }
     }
 ];
 
@@ -315,6 +330,13 @@ function updateBlueprintProgress() {
             if (blueprint.researchProgress >= 100) {
                 blueprint.phase = 'research_complete';
                 addLogEntry(`✓ Research complete for ${blueprint.name}! Ready for design phase.`);
+                
+                // Unlock Saturn map when Starship research completes
+                if (blueprint.id === 'starship' && !gameState.mapUnlocked) {
+                    gameState.mapUnlocked = true;
+                    addLogEntry(`🗺️ Saturn System Map unlocked! Access it below to explore Saturn and its moons.`);
+                    updateMapUI();
+                }
             }
         } else if (blueprint.phase === 'design') {
             const daysElapsed = gameState.day - blueprint.startDay;
@@ -449,6 +471,9 @@ function updateUI() {
     
     // Items
     updateItemsUI();
+    
+    // Map
+    updateMapUI();
     
     // Active rewards display
     updateActiveRewardsUI();
@@ -715,6 +740,16 @@ function updateItemBonusesDisplay() {
         container.style.display = 'block';
     } else {
         container.style.display = 'none';
+    }
+}
+
+// Update map UI visibility
+function updateMapUI() {
+    const mapSection = document.getElementById('map-section');
+    if (gameState.mapUnlocked) {
+        mapSection.style.display = 'block';
+    } else {
+        mapSection.style.display = 'none';
     }
 }
 
@@ -1083,6 +1118,7 @@ function resetGame() {
         gameState.blueprints = [];
         gameState.items = [];
         gameState.itemIdCounter = 0;
+        gameState.mapUnlocked = false;
         
         // Clear log
         const logContent = document.getElementById('game-log');
@@ -1224,6 +1260,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 gameState.itemIdCounter = maxId;
+            }
+            // Ensure mapUnlocked exists for old saves
+            if (gameState.mapUnlocked === undefined) {
+                gameState.mapUnlocked = false;
             }
             addLogEntry('Resuming from previous session...');
         } catch (e) {
