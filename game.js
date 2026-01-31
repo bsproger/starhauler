@@ -61,7 +61,63 @@ const costs = {
     remoteFacility: 500 // Cost to establish a remote facility
 };
 
-// Tech Tree definitions for interplanetary travel
+// Blueprint definitions
+const blueprintDefinitions = [
+    {
+        id: 'advanced_mining_array',
+        name: 'Advanced Mining Array',
+        type: 'Building Upgrade',
+        description: '+25% production per facility',
+        researchCost: 300,
+        researchTime: 3, // days
+        designCost: 400,
+        designTime: 2, // days
+        productionCost: 250,
+        productionTime: 1, // days
+        bonus: { type: 'production', value: 0.25 }
+    },
+    {
+        id: 'quantum_sensors',
+        name: 'Quantum Sensors',
+        type: 'Ship System',
+        description: '+30% exploration effectiveness',
+        researchCost: 500,
+        researchTime: 4,
+        designCost: 600,
+        designTime: 3,
+        productionCost: 400,
+        productionTime: 2,
+        bonus: { type: 'exploration', value: 0.30 }
+    },
+    {
+        id: 'auto_refinery',
+        name: 'Auto-Refinery',
+        type: 'Facility Equipment',
+        description: '+20% production per facility',
+        researchCost: 400,
+        researchTime: 3,
+        designCost: 500,
+        designTime: 2,
+        productionCost: 300,
+        productionTime: 1,
+        bonus: { type: 'facilityProduction', value: 0.20 }
+    },
+    {
+        id: 'starship',
+        name: 'Starship',
+        type: 'Advanced Vessel',
+        description: 'Unlocks Saturn system map for advanced exploration',
+        researchCost: 800,
+        researchTime: 5,
+        designCost: 1000,
+        designTime: 4,
+        productionCost: 600,
+        productionTime: 3,
+        bonus: { type: 'map_unlock', value: 1 }
+    }
+];
+
+// Tech tree definitions for interplanetary travel
 const techTreeDefinitions = [
     // Tier 1: Basic Research (unlocked immediately)
     {
@@ -137,62 +193,6 @@ const techTreeDefinitions = [
         researchTime: 7,
         prerequisites: ['interplanetary_navigation'],
         unlocks: []
-    }
-];
-
-// Blueprint definitions
-const blueprintDefinitions = [
-    {
-        id: 'advanced_mining_array',
-        name: 'Advanced Mining Array',
-        type: 'Building Upgrade',
-        description: '+25% production per facility',
-        researchCost: 300,
-        researchTime: 3, // days
-        designCost: 400,
-        designTime: 2, // days
-        productionCost: 250,
-        productionTime: 1, // days
-        bonus: { type: 'production', value: 0.25 }
-    },
-    {
-        id: 'quantum_sensors',
-        name: 'Quantum Sensors',
-        type: 'Ship System',
-        description: '+30% exploration effectiveness',
-        researchCost: 500,
-        researchTime: 4,
-        designCost: 600,
-        designTime: 3,
-        productionCost: 400,
-        productionTime: 2,
-        bonus: { type: 'exploration', value: 0.30 }
-    },
-    {
-        id: 'auto_refinery',
-        name: 'Auto-Refinery',
-        type: 'Facility Equipment',
-        description: '+20% production per facility',
-        researchCost: 400,
-        researchTime: 3,
-        designCost: 500,
-        designTime: 2,
-        productionCost: 300,
-        productionTime: 1,
-        bonus: { type: 'facilityProduction', value: 0.20 }
-    },
-    {
-        id: 'starship',
-        name: 'Starship',
-        type: 'Advanced Vessel',
-        description: 'Unlocks Saturn system map for advanced exploration',
-        researchCost: 800,
-        researchTime: 5,
-        designCost: 1000,
-        designTime: 4,
-        productionCost: 600,
-        productionTime: 3,
-        bonus: { type: 'map_unlock', value: 1 }
     }
 ];
 
@@ -635,6 +635,9 @@ function updateUI() {
     
     // Personnel
     updatePersonnelUI();
+    
+    // Tech tree
+    updateTechTreeUI();
     
     // Blueprints
     updateBlueprintsUI();
