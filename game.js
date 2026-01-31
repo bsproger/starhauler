@@ -117,7 +117,8 @@ const eventConfig = {
     maxCooldownDays: 3,                // Maximum cooldown between events
     // Monolith discovery requirements
     monolithMinShips: 3,               // Minimum ships required to discover monolith
-    monolithMinExploration: 2          // Minimum exploration research level required
+    monolithMinExploration: 2,         // Minimum exploration research level required
+    monolithProgressPerResearcher: 5   // Translation progress % per researcher per day
 };
 
 // Production rates
@@ -294,7 +295,7 @@ function updateMonolithTranslation() {
     
     // Each researcher contributes to progress per day
     // More researchers = faster translation
-    const progressPerDay = gameState.monolith.researchersAssigned * 5; // 5% per researcher per day
+    const progressPerDay = gameState.monolith.researchersAssigned * eventConfig.monolithProgressPerResearcher;
     gameState.monolith.translationProgress = Math.min(100, gameState.monolith.translationProgress + progressPerDay);
     
     if (gameState.monolith.translationProgress >= 100) {
