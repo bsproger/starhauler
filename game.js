@@ -16,7 +16,8 @@ const gameState = {
         productionBonus: 0, // Bonus to production rate
         temporaryMetalBonus: 0 // One-time metal bonuses
     },
-    eventCooldown: 0 // Days until next event can trigger
+    eventCooldown: 0, // Days until next event can trigger
+    pendingRepairs: [] // Track scheduled repairs: [{type: 'production'|'exploration', amount: number, completionDay: number}]
 };
 
 // Game constants and costs
@@ -106,7 +107,8 @@ function updateActiveRewardsUI() {
         rewards.push(`⚠️ Production: ${(gameState.activeRewards.productionBonus * 100).toFixed(0)}%`);
     }
     
-    if (gameState.eventCooldown > 0) {
+    // Only show cooldown if there are other active effects or if ships exist
+    if (gameState.eventCooldown > 0 && (rewards.length > 0 || gameState.ships > 0)) {
         rewards.push(`⏳ Next event in ${gameState.eventCooldown} day${gameState.eventCooldown > 1 ? 's' : ''}`);
     }
     
@@ -217,12 +219,12 @@ const explorationEvents = {
             effect: () => {
                 // Temporary penalty that will be "repaired" after a few days
                 gameState.activeRewards.productionBonus = Math.max(-0.10, (gameState.activeRewards.productionBonus || 0) - 0.10);
-                // Schedule repair
-                setTimeout(() => {
-                    gameState.activeRewards.productionBonus = Math.min(1.0, (gameState.activeRewards.productionBonus || 0) + 0.10);
-                    addLogEntry('Repairs completed. Production systems back to normal.');
-                    updateUI();
-                }, 120000); // 2 minutes (2 days in game time)
+                // Schedule repair for 2 days later
+                gameState.pendingRepairs.push({
+                    type: 'production',
+                    amount: 0.10,
+                    completionDay: gameState.day + 2
+                });
             }
         },
         {
@@ -239,12 +241,12 @@ const explorationEvents = {
             message: '⚠️ Minor asteroid collision damaged ship sensors. Exploration efficiency reduced by 5% until repairs.',
             effect: () => {
                 gameState.activeRewards.explorationBonus = Math.max(-0.15, (gameState.activeRewards.explorationBonus || 0) - 0.05);
-                // Schedule repair
-                setTimeout(() => {
-                    gameState.activeRewards.explorationBonus = Math.min(1.0, (gameState.activeRewards.explorationBonus || 0) + 0.05);
-                    addLogEntry('Ship repairs completed. Sensors back online.');
-                    updateUI();
-                }, 90000); // 1.5 minutes
+                // Schedule repair for 2 days later
+                gameState.pendingRepairs.push({
+                    type: 'exploration',
+                    amount: 0.05,
+                    completionDay: gameState.day + 2
+                });
             }
         },
         {
@@ -360,6 +362,27 @@ function gameLoop() {
     if (newDay > gameState.day) {
         gameState.day = newDay;
         
+        // Process pending repairs
+        if (gameState.pendingRepairs && gameState.pendingRepairs.length > 0) {
+            const remainingRepairs = [];
+            for (const repair of gameState.pendingRepairs) {
+                if (gameState.day >= repair.completionDay) {
+                    // Complete the repair
+                    if (repair.type === 'production') {
+                        gameState.activeRewards.productionBonus = Math.min(1.0, (gameState.activeRewards.productionBonus || 0) + repair.amount);
+                        addLogEntry('Repairs completed. Production systems back to normal.');
+                    } else if (repair.type === 'exploration') {
+                        gameState.activeRewards.explorationBonus = Math.min(1.0, (gameState.activeRewards.explorationBonus || 0) + repair.amount);
+                        addLogEntry('Ship repairs completed. Sensors back online.');
+                    }
+                } else {
+                    // Keep the repair in the queue
+                    remainingRepairs.push(repair);
+                }
+            }
+            gameState.pendingRepairs = remainingRepairs;
+        }
+        
         // Decrease event cooldown
         if (gameState.eventCooldown > 0) {
             gameState.eventCooldown--;
@@ -442,6 +465,7 @@ function resetGame() {
             temporaryMetalBonus: 0
         };
         gameState.eventCooldown = 0;
+        gameState.pendingRepairs = [];
         
         // Clear log
         const logContent = document.getElementById('game-log');
@@ -499,6 +523,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ensure eventCooldown exists for old saves
             if (gameState.eventCooldown === undefined) {
                 gameState.eventCooldown = 0;
+            }
+            // Ensure pendingRepairs exists for old saves
+            if (!gameState.pendingRepairs) {
+                gameState.pendingRepairs = [];
             }
             addLogEntry('Resuming from previous session...');
         } catch (e) {
