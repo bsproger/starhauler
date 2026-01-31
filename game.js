@@ -9,6 +9,7 @@ const gameState = {
         automation: 0
     },
     day: 1,
+    gameStartTime: Date.now(),
     lastUpdate: Date.now()
 };
 
@@ -156,7 +157,8 @@ function gameLoop() {
     gameState.metal += getProductionRate() * deltaTime;
     
     // Update day counter (every 60 seconds = 1 day)
-    const newDay = Math.floor(Date.now() / 60000) + 1;
+    const elapsedTime = Date.now() - gameState.gameStartTime;
+    const newDay = Math.floor(elapsedTime / 60000) + 1;
     if (newDay > gameState.day) {
         gameState.day = newDay;
         // Random events
@@ -225,6 +227,7 @@ function resetGame() {
         gameState.research.exploration = 0;
         gameState.research.automation = 0;
         gameState.day = 1;
+        gameState.gameStartTime = Date.now();
         gameState.lastUpdate = Date.now();
         
         // Clear log
@@ -268,6 +271,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const loadedState = JSON.parse(saved);
             Object.assign(gameState, loadedState);
+            // Ensure gameStartTime exists for old saves
+            if (!gameState.gameStartTime) {
+                gameState.gameStartTime = Date.now();
+            }
             addLogEntry('Resuming from previous session...');
         } catch (e) {
             console.error('Failed to load saved game:', e);
