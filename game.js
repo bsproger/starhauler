@@ -17,7 +17,18 @@ const gameState = {
         temporaryMetalBonus: 0 // One-time metal bonuses
     },
     eventCooldown: 0, // Days until next event can trigger
-    pendingRepairs: [] // Track scheduled repairs: [{type: 'production'|'exploration', amount: number, completionDay: number}]
+    pendingRepairs: [], // Track scheduled repairs: [{type: 'production'|'exploration', amount: number, completionDay: number}]
+    // Personnel system
+    personnel: {
+        researchers: 0,
+        engineers: 0,
+        workers: 0
+    },
+    // Blueprint system
+    blueprints: [], // Array of blueprint objects
+    // Items system
+    items: [], // Array of produced items
+    itemIdCounter: 0 // Counter for generating unique item IDs
 };
 
 // Game constants and costs
@@ -28,8 +39,56 @@ const costs = {
         production: 200,
         exploration: 300,
         automation: 500
+    },
+    personnel: {
+        researcher: { hire: 150, upkeep: 10 },
+        engineer: { hire: 200, upkeep: 15 },
+        worker: { hire: 100, upkeep: 8 }
     }
 };
+
+// Blueprint definitions
+const blueprintDefinitions = [
+    {
+        id: 'advanced_mining_array',
+        name: 'Advanced Mining Array',
+        type: 'Building Upgrade',
+        description: '+25% production per facility',
+        researchCost: 300,
+        researchTime: 3, // days
+        designCost: 400,
+        designTime: 2, // days
+        productionCost: 250,
+        productionTime: 1, // days
+        bonus: { type: 'production', value: 0.25 }
+    },
+    {
+        id: 'quantum_sensors',
+        name: 'Quantum Sensors',
+        type: 'Ship System',
+        description: '+30% exploration effectiveness',
+        researchCost: 500,
+        researchTime: 4,
+        designCost: 600,
+        designTime: 3,
+        productionCost: 400,
+        productionTime: 2,
+        bonus: { type: 'exploration', value: 0.30 }
+    },
+    {
+        id: 'auto_refinery',
+        name: 'Auto-Refinery',
+        type: 'Facility Equipment',
+        description: '+20% production per facility',
+        researchCost: 400,
+        researchTime: 3,
+        designCost: 500,
+        designTime: 2,
+        productionCost: 300,
+        productionTime: 1,
+        bonus: { type: 'facilityProduction', value: 0.20 }
+    }
+];
 
 // Event system constants
 const eventConfig = {
@@ -52,7 +111,23 @@ function getProductionRate() {
     const productionBonus = 1 + (gameState.research.production * 0.25); // +25% per level
     const automationBonus = 1 + (gameState.research.automation * 0.15); // +15% per level
     const rewardBonus = 1 + (gameState.activeRewards.productionBonus || 0); // Reward bonus from events
-    return baseRate * productionBonus * automationBonus * rewardBonus;
+    const itemBonus = getItemProductionBonus(); // Bonus from assigned items
+    return baseRate * productionBonus * automationBonus * rewardBonus * itemBonus;
+}
+
+// Calculate production bonus from assigned items
+function getItemProductionBonus() {
+    let bonus = 1;
+    gameState.items.forEach(item => {
+        if (item.assigned && item.blueprint.bonus) {
+            // Both production and facilityProduction types affect production rate
+            if (item.blueprint.bonus.type === 'production' || 
+                item.blueprint.bonus.type === 'facilityProduction') {
+                bonus += item.blueprint.bonus.value;
+            }
+        }
+    });
+    return bonus;
 }
 
 // Calculate costs with scaling
@@ -68,6 +143,205 @@ function getResearchCost(type) {
     const baseCost = costs.research[type];
     const level = gameState.research[type];
     return Math.floor(baseCost * Math.pow(2, level));
+}
+
+// Personnel management functions
+
+// Personnel type mapping for property access
+const personnelTypeMap = {
+    researcher: 'researchers',
+    engineer: 'engineers',
+    worker: 'workers'
+};
+
+function hirePersonnel(type) {
+    const cost = costs.personnel[type].hire;
+    const propertyName = personnelTypeMap[type];
+    
+    if (gameState.metal >= cost) {
+        gameState.metal -= cost;
+        gameState.personnel[propertyName]++;
+        addLogEntry(`Hired 1 ${type}. Total: ${gameState.personnel[propertyName]}`);
+        updateUI();
+    }
+}
+
+function firePersonnel(type) {
+    const propertyName = personnelTypeMap[type];
+    
+    if (gameState.personnel[propertyName] > 0) {
+        gameState.personnel[propertyName]--;
+        addLogEntry(`Released 1 ${type}. Total: ${gameState.personnel[propertyName]}`);
+        updateUI();
+    }
+}
+
+function getPersonnelUpkeep() {
+    let total = 0;
+    total += gameState.personnel.researchers * costs.personnel.researcher.upkeep;
+    total += gameState.personnel.engineers * costs.personnel.engineer.upkeep;
+    total += gameState.personnel.workers * costs.personnel.worker.upkeep;
+    return total;
+}
+
+function deductPersonnelUpkeep() {
+    const upkeep = getPersonnelUpkeep();
+    if (upkeep > 0) {
+        gameState.metal = Math.max(0, gameState.metal - upkeep);
+        addLogEntry(`Personnel upkeep deducted: ${upkeep} metal alloys`);
+    }
+}
+
+// Blueprint management functions
+function startBlueprintResearch(blueprintDefId) {
+    const def = blueprintDefinitions.find(b => b.id === blueprintDefId);
+    if (!def) return;
+    
+    // Check if already in progress or completed
+    const existing = gameState.blueprints.find(b => b.id === blueprintDefId);
+    if (existing) {
+        addLogEntry(`Blueprint ${def.name} is already in progress or completed.`);
+        return;
+    }
+    
+    // Check requirements
+    if (gameState.personnel.researchers < 1) {
+        addLogEntry(`Need at least 1 researcher to start blueprint research.`);
+        return;
+    }
+    
+    if (gameState.metal < def.researchCost) {
+        addLogEntry(`Not enough metal for ${def.name} research. Need ${def.researchCost}.`);
+        return;
+    }
+    
+    gameState.metal -= def.researchCost;
+    
+    const blueprint = {
+        id: def.id,
+        name: def.name,
+        type: def.type,
+        description: def.description,
+        researchProgress: 0,
+        researchTime: def.researchTime,
+        designProgress: 0,
+        designTime: def.designTime,
+        designCost: def.designCost,
+        productionCost: def.productionCost,
+        productionTime: def.productionTime,
+        bonus: def.bonus,
+        phase: 'research', // research, design, complete
+        startDay: gameState.day
+    };
+    
+    gameState.blueprints.push(blueprint);
+    addLogEntry(`Started research on ${def.name} blueprint.`);
+    updateUI();
+}
+
+function startBlueprintDesign(blueprintId) {
+    const blueprint = gameState.blueprints.find(b => b.id === blueprintId);
+    if (!blueprint || blueprint.phase !== 'research') return;
+    
+    if (gameState.personnel.engineers < 1) {
+        addLogEntry(`Need at least 1 engineer to start blueprint design.`);
+        return;
+    }
+    
+    if (gameState.metal < blueprint.designCost) {
+        addLogEntry(`Not enough metal for ${blueprint.name} design. Need ${blueprint.designCost}.`);
+        return;
+    }
+    
+    gameState.metal -= blueprint.designCost;
+    blueprint.phase = 'design';
+    blueprint.startDay = gameState.day;
+    addLogEntry(`Started design phase for ${blueprint.name} blueprint.`);
+    updateUI();
+}
+
+function updateBlueprintProgress() {
+    gameState.blueprints.forEach(blueprint => {
+        if (blueprint.phase === 'research') {
+            const daysElapsed = gameState.day - blueprint.startDay;
+            blueprint.researchProgress = Math.min(100, (daysElapsed / blueprint.researchTime) * 100);
+            
+            if (blueprint.researchProgress >= 100) {
+                blueprint.phase = 'research_complete';
+                addLogEntry(`✓ Research complete for ${blueprint.name}! Ready for design phase.`);
+            }
+        } else if (blueprint.phase === 'design') {
+            const daysElapsed = gameState.day - blueprint.startDay;
+            blueprint.designProgress = Math.min(100, (daysElapsed / blueprint.designTime) * 100);
+            
+            if (blueprint.designProgress >= 100) {
+                blueprint.phase = 'complete';
+                addLogEntry(`✓ Blueprint complete: ${blueprint.name}! Ready for production.`);
+            }
+        }
+    });
+}
+
+// Item production and management
+function produceItem(blueprintId) {
+    const blueprint = gameState.blueprints.find(b => b.id === blueprintId);
+    if (!blueprint || blueprint.phase !== 'complete') return;
+    
+    if (gameState.personnel.workers < 1) {
+        addLogEntry(`Need at least 1 worker to produce items.`);
+        return;
+    }
+    
+    if (gameState.metal < blueprint.productionCost) {
+        addLogEntry(`Not enough metal to produce ${blueprint.name}. Need ${blueprint.productionCost}.`);
+        return;
+    }
+    
+    gameState.metal -= blueprint.productionCost;
+    
+    // Generate unique item ID using counter
+    // Counter is incremented before use, so IDs start at 1
+    // This ensures uniqueness even with rapid production
+    gameState.itemIdCounter++;
+    const item = {
+        id: `${blueprintId}_${gameState.itemIdCounter}`,
+        blueprint: blueprint,
+        assigned: false,
+        productionProgress: 0,
+        productionStartDay: gameState.day
+    };
+    
+    gameState.items.push(item);
+    addLogEntry(`Started production of ${blueprint.name}.`);
+    updateUI();
+}
+
+function updateItemProduction() {
+    gameState.items.forEach(item => {
+        if (item.productionProgress < 100) {
+            const daysElapsed = gameState.day - item.productionStartDay;
+            item.productionProgress = Math.min(100, (daysElapsed / item.blueprint.productionTime) * 100);
+            
+            if (item.productionProgress >= 100) {
+                addLogEntry(`✓ Production complete: ${item.blueprint.name}! Ready for assignment.`);
+            }
+        }
+    });
+}
+
+function assignItem(itemId) {
+    const item = gameState.items.find(i => i.id === itemId);
+    if (!item || item.productionProgress < 100) return;
+    
+    item.assigned = !item.assigned;
+    
+    if (item.assigned) {
+        addLogEntry(`Assigned ${item.blueprint.name}. Bonus active!`);
+    } else {
+        addLogEntry(`Unassigned ${item.blueprint.name}. Bonus removed.`);
+    }
+    
+    updateUI();
 }
 
 // Update UI
@@ -92,6 +366,15 @@ function updateUI() {
     updateResearchUI('production', 'Production Efficiency');
     updateResearchUI('exploration', 'Exploration Range');
     updateResearchUI('automation', 'Automated Systems');
+    
+    // Personnel
+    updatePersonnelUI();
+    
+    // Blueprints
+    updateBlueprintsUI();
+    
+    // Items
+    updateItemsUI();
     
     // Active rewards display
     updateActiveRewardsUI();
@@ -138,6 +421,192 @@ function updateResearchUI(type, name) {
     document.getElementById(`${type}-research-cost`).textContent = cost.toLocaleString();
     document.getElementById(`${type}-level`).textContent = level;
     document.getElementById(`research-${type}`).disabled = gameState.metal < cost;
+}
+
+// Update personnel UI
+function updatePersonnelUI() {
+    // Update counts and costs
+    document.getElementById('researcher-count').textContent = gameState.personnel.researchers;
+    document.getElementById('engineer-count').textContent = gameState.personnel.engineers;
+    document.getElementById('worker-count').textContent = gameState.personnel.workers;
+    
+    // Update hire button states
+    document.getElementById('hire-researcher').disabled = gameState.metal < costs.personnel.researcher.hire;
+    document.getElementById('hire-engineer').disabled = gameState.metal < costs.personnel.engineer.hire;
+    document.getElementById('hire-worker').disabled = gameState.metal < costs.personnel.worker.hire;
+    
+    // Update fire button states
+    document.getElementById('fire-researcher').disabled = gameState.personnel.researchers === 0;
+    document.getElementById('fire-engineer').disabled = gameState.personnel.engineers === 0;
+    document.getElementById('fire-worker').disabled = gameState.personnel.workers === 0;
+    
+    // Update upkeep display
+    const upkeep = getPersonnelUpkeep();
+    document.getElementById('personnel-upkeep').textContent = upkeep;
+}
+
+// Update blueprints UI
+function updateBlueprintsUI() {
+    const container = document.getElementById('blueprints-list');
+    container.innerHTML = '';
+    
+    // Show available blueprints that haven't been started
+    blueprintDefinitions.forEach(def => {
+        const existing = gameState.blueprints.find(b => b.id === def.id);
+        if (!existing) {
+            const div = document.createElement('div');
+            div.className = 'blueprint-item';
+            div.innerHTML = `
+                <div class="blueprint-header">
+                    <strong>${def.name}</strong> (${def.type})
+                </div>
+                <div class="blueprint-desc">${def.description}</div>
+                <div class="blueprint-costs">
+                    Research: ${def.researchCost} metal (${def.researchTime} days) | 
+                    Design: ${def.designCost} metal (${def.designTime} days)
+                </div>
+                <button class="action-btn" onclick="startBlueprintResearch('${def.id}')" 
+                    ${gameState.metal < def.researchCost || gameState.personnel.researchers < 1 ? 'disabled' : ''}>
+                    Start Research
+                </button>
+            `;
+            container.appendChild(div);
+        }
+    });
+    
+    // Show blueprints in progress
+    gameState.blueprints.forEach(blueprint => {
+        const div = document.createElement('div');
+        div.className = 'blueprint-item blueprint-in-progress';
+        
+        let status = '';
+        let actionButton = '';
+        
+        if (blueprint.phase === 'research') {
+            status = `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${blueprint.researchProgress}%"></div>
+                </div>
+                <div class="progress-text">Research: ${blueprint.researchProgress.toFixed(0)}%</div>
+            `;
+        } else if (blueprint.phase === 'research_complete') {
+            status = '<div class="status-complete">✓ Research Complete</div>';
+            actionButton = `
+                <button class="action-btn" onclick="startBlueprintDesign('${blueprint.id}')" 
+                    ${gameState.metal < blueprint.designCost || gameState.personnel.engineers < 1 ? 'disabled' : ''}>
+                    Start Design (${blueprint.designCost} metal)
+                </button>
+            `;
+        } else if (blueprint.phase === 'design') {
+            status = `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${blueprint.designProgress}%"></div>
+                </div>
+                <div class="progress-text">Design: ${blueprint.designProgress.toFixed(0)}%</div>
+            `;
+        } else if (blueprint.phase === 'complete') {
+            status = '<div class="status-complete">✓ Blueprint Complete - Ready for Production</div>';
+        }
+        
+        div.innerHTML = `
+            <div class="blueprint-header">
+                <strong>${blueprint.name}</strong> (${blueprint.type})
+            </div>
+            <div class="blueprint-desc">${blueprint.description}</div>
+            ${status}
+            ${actionButton}
+        `;
+        container.appendChild(div);
+    });
+    
+    if (container.children.length === 0) {
+        container.innerHTML = '<p style="color: #666;">No blueprints available yet.</p>';
+    }
+}
+
+// Update items UI
+function updateItemsUI() {
+    const container = document.getElementById('items-list');
+    container.innerHTML = '';
+    
+    // Show completed blueprints available for production
+    const completedBlueprints = gameState.blueprints.filter(b => b.phase === 'complete');
+    completedBlueprints.forEach(blueprint => {
+        const div = document.createElement('div');
+        div.className = 'item-production';
+        div.innerHTML = `
+            <div class="item-header">
+                <strong>${blueprint.name}</strong>
+            </div>
+            <div class="item-cost">Cost: ${blueprint.productionCost} metal | Time: ${blueprint.productionTime} day(s)</div>
+            <button class="action-btn" onclick="produceItem('${blueprint.id}')" 
+                ${gameState.metal < blueprint.productionCost || gameState.personnel.workers < 1 ? 'disabled' : ''}>
+                Produce Item
+            </button>
+        `;
+        container.appendChild(div);
+    });
+    
+    // Show items in production or completed
+    gameState.items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item-card';
+        
+        let status = '';
+        let actionButton = '';
+        
+        if (item.productionProgress < 100) {
+            status = `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${item.productionProgress}%"></div>
+                </div>
+                <div class="progress-text">Production: ${item.productionProgress.toFixed(0)}%</div>
+            `;
+        } else {
+            const assignedClass = item.assigned ? 'item-assigned' : '';
+            const assignedText = item.assigned ? '✓ Assigned' : 'Not Assigned';
+            status = `<div class="item-status ${assignedClass}">${assignedText}</div>`;
+            actionButton = `
+                <button class="action-btn" onclick="assignItem('${item.id}')">
+                    ${item.assigned ? 'Unassign' : 'Assign'}
+                </button>
+            `;
+        }
+        
+        div.innerHTML = `
+            <div class="item-header">
+                <strong>${item.blueprint.name}</strong>
+            </div>
+            <div class="item-desc">${item.blueprint.description}</div>
+            ${status}
+            ${actionButton}
+        `;
+        container.appendChild(div);
+    });
+    
+    if (container.children.length === 0) {
+        container.innerHTML = '<p style="color: #666;">No items available. Complete blueprints to produce items.</p>';
+    }
+    
+    // Update active bonuses display
+    updateItemBonusesDisplay();
+}
+
+// Update active item bonuses display
+function updateItemBonusesDisplay() {
+    const container = document.getElementById('item-bonuses');
+    const assignedItems = gameState.items.filter(i => i.assigned && i.productionProgress >= 100);
+    
+    if (assignedItems.length > 0) {
+        let bonusText = '<strong>Active Item Bonuses:</strong><br>';
+        assignedItems.forEach(item => {
+            bonusText += `• ${item.blueprint.name}: ${item.blueprint.description}<br>`;
+        });
+        container.innerHTML = bonusText;
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
 }
 
 // Add log entry
@@ -374,6 +843,15 @@ function gameLoop() {
     if (newDay > gameState.day) {
         gameState.day = newDay;
         
+        // Deduct personnel upkeep
+        deductPersonnelUpkeep();
+        
+        // Update blueprint progress
+        updateBlueprintProgress();
+        
+        // Update item production progress
+        updateItemProduction();
+        
         // Process pending repairs
         if (gameState.pendingRepairs && gameState.pendingRepairs.length > 0) {
             const remainingRepairs = [];
@@ -478,6 +956,14 @@ function resetGame() {
         };
         gameState.eventCooldown = 0;
         gameState.pendingRepairs = [];
+        gameState.personnel = {
+            researchers: 0,
+            engineers: 0,
+            workers: 0
+        };
+        gameState.blueprints = [];
+        gameState.items = [];
+        gameState.itemIdCounter = 0;
         
         // Clear log
         const logContent = document.getElementById('game-log');
@@ -503,6 +989,15 @@ document.getElementById('research-exploration').addEventListener('click', () =>
     conductResearch('exploration', 'Exploration Range'));
 document.getElementById('research-automation').addEventListener('click', () => 
     conductResearch('automation', 'Automated Systems'));
+
+// Personnel event listeners
+document.getElementById('hire-researcher').addEventListener('click', () => hirePersonnel('researcher'));
+document.getElementById('fire-researcher').addEventListener('click', () => firePersonnel('researcher'));
+document.getElementById('hire-engineer').addEventListener('click', () => hirePersonnel('engineer'));
+document.getElementById('fire-engineer').addEventListener('click', () => firePersonnel('engineer'));
+document.getElementById('hire-worker').addEventListener('click', () => hirePersonnel('worker'));
+document.getElementById('fire-worker').addEventListener('click', () => firePersonnel('worker'));
+
 document.getElementById('save-game').addEventListener('click', saveGame);
 document.getElementById('load-game').addEventListener('click', loadGame);
 document.getElementById('reset-game').addEventListener('click', resetGame);
@@ -539,6 +1034,46 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ensure pendingRepairs exists for old saves
             if (!gameState.pendingRepairs) {
                 gameState.pendingRepairs = [];
+            }
+            // Ensure personnel exists for old saves
+            if (!gameState.personnel) {
+                gameState.personnel = {
+                    researchers: 0,
+                    engineers: 0,
+                    workers: 0
+                };
+            }
+            // Ensure blueprints exists for old saves
+            if (!gameState.blueprints) {
+                gameState.blueprints = [];
+            }
+            // Ensure items exists for old saves
+            if (!gameState.items) {
+                gameState.items = [];
+            }
+            // Ensure itemIdCounter exists for old saves
+            if (gameState.itemIdCounter === undefined) {
+                // Initialize counter to max existing item ID to avoid collisions
+                // Counter is incremented before use in produceItem(), so this sets
+                // the next ID correctly. E.g., if max existing ID is 5, counter = 5,
+                // next item gets ID 6 (after increment).
+                let maxId = 0;
+                if (gameState.items && gameState.items.length > 0) {
+                    gameState.items.forEach(item => {
+                        // Safely parse item ID, expecting format: blueprintId_number
+                        if (item.id && typeof item.id === 'string') {
+                            const parts = item.id.split('_');
+                            // Ensure we have at least 2 parts (blueprintId and number)
+                            if (parts.length >= 2) {
+                                const idNum = parseInt(parts[parts.length - 1]);
+                                if (!isNaN(idNum) && idNum > maxId) {
+                                    maxId = idNum;
+                                }
+                            }
+                        }
+                    });
+                }
+                gameState.itemIdCounter = maxId;
             }
             addLogEntry('Resuming from previous session...');
         } catch (e) {

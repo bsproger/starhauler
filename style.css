@@ -208,6 +208,200 @@ h2 {
     box-shadow: 0 0 15px rgba(255, 102, 102, 0.5);
 }
 
+/* Personnel panel styles */
+.personnel-panel {
+    grid-column: span 2;
+}
+
+.personnel-upkeep {
+    padding: 10px;
+    margin-bottom: 15px;
+    background-color: #1a1a2e;
+    border: 1px solid #ffaa00;
+    color: #ffaa00;
+    text-align: center;
+}
+
+.personnel-row {
+    margin-bottom: 10px;
+}
+
+.personnel-item {
+    padding: 10px;
+    background-color: #1a1a2e;
+    border: 1px solid #006600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.personnel-name {
+    color: #00ffff;
+    font-weight: bold;
+    min-width: 120px;
+}
+
+.personnel-count {
+    color: #00ff00;
+    font-size: 1.2em;
+    min-width: 30px;
+}
+
+.personnel-btn {
+    flex: 1;
+    min-width: 120px;
+    margin-top: 0;
+    padding: 8px;
+    font-size: 0.9em;
+}
+
+.fire-btn {
+    background-color: #4d1a1a;
+    border-color: #ff6666;
+    color: #ff6666;
+}
+
+.fire-btn:hover:not(:disabled) {
+    background-color: #6d2a2a;
+    box-shadow: 0 0 10px rgba(255, 102, 102, 0.5);
+}
+
+/* Blueprints panel styles */
+.blueprints-panel {
+    grid-column: span 2;
+}
+
+.blueprints-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.blueprint-item {
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #1a1a2e;
+    border: 1px solid #006600;
+}
+
+.blueprint-in-progress {
+    border-color: #00ffff;
+}
+
+.blueprint-header {
+    color: #00ffff;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+}
+
+.blueprint-desc {
+    color: #00ff00;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.blueprint-costs {
+    color: #ffaa00;
+    font-size: 0.9em;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #0f0f1f;
+    border: 1px solid #00ff00;
+    margin: 10px 0 5px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff00, #00ffff);
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    color: #00ffff;
+    font-size: 0.9em;
+    text-align: center;
+}
+
+.status-complete {
+    color: #00ff00;
+    font-weight: bold;
+    padding: 10px;
+    text-align: center;
+    background-color: #1a4d1a;
+    border: 1px solid #00ff00;
+    margin: 10px 0;
+}
+
+/* Items panel styles */
+.items-panel {
+    grid-column: span 2;
+}
+
+.item-bonuses {
+    padding: 10px;
+    margin-bottom: 15px;
+    background-color: #1a1a2e;
+    border: 1px solid #00ff00;
+    color: #00ff00;
+}
+
+.items-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.item-production,
+.item-card {
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #1a1a2e;
+    border: 1px solid #006600;
+}
+
+.item-card {
+    border-color: #00ffff;
+}
+
+.item-header {
+    color: #00ffff;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+}
+
+.item-desc {
+    color: #00ff00;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.item-cost {
+    color: #ffaa00;
+    font-size: 0.9em;
+    margin-bottom: 10px;
+}
+
+.item-status {
+    padding: 8px;
+    margin: 10px 0;
+    text-align: center;
+    font-weight: bold;
+    background-color: #4d4d1a;
+    color: #ffaa00;
+    border: 1px solid #ffaa00;
+}
+
+.item-assigned {
+    background-color: #1a4d1a;
+    color: #00ff00;
+    border-color: #00ff00;
+}
+
 footer {
     margin-top: 20px;
     padding-top: 15px;
@@ -217,20 +411,28 @@ footer {
 }
 
 /* Scrollbar styling */
-.log-content::-webkit-scrollbar {
+.log-content::-webkit-scrollbar,
+.blueprints-container::-webkit-scrollbar,
+.items-container::-webkit-scrollbar {
     width: 10px;
 }
 
-.log-content::-webkit-scrollbar-track {
+.log-content::-webkit-scrollbar-track,
+.blueprints-container::-webkit-scrollbar-track,
+.items-container::-webkit-scrollbar-track {
     background: #0a0a1a;
 }
 
-.log-content::-webkit-scrollbar-thumb {
+.log-content::-webkit-scrollbar-thumb,
+.blueprints-container::-webkit-scrollbar-thumb,
+.items-container::-webkit-scrollbar-thumb {
     background: #00ff00;
     border: 1px solid #006600;
 }
 
-.log-content::-webkit-scrollbar-thumb:hover {
+.log-content::-webkit-scrollbar-thumb:hover,
+.blueprints-container::-webkit-scrollbar-thumb:hover,
+.items-container::-webkit-scrollbar-thumb:hover {
     background: #00ff00;
 }
 

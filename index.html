@@ -76,6 +76,64 @@
                 </div>
             </section>
 
+            <section class="personnel-panel">
+                <h2>Personnel Management</h2>
+                <div class="personnel-upkeep">
+                    <strong>Daily Upkeep:</strong> <span id="personnel-upkeep">0</span> Metal Alloys/day
+                </div>
+                <div class="personnel-row">
+                    <div class="personnel-item">
+                        <span class="personnel-name">Researchers:</span>
+                        <span id="researcher-count" class="personnel-count">0</span>
+                        <button id="hire-researcher" class="action-btn personnel-btn" disabled>
+                            Hire (150 metal)
+                        </button>
+                        <button id="fire-researcher" class="action-btn personnel-btn fire-btn" disabled>
+                            Fire
+                        </button>
+                    </div>
+                </div>
+                <div class="personnel-row">
+                    <div class="personnel-item">
+                        <span class="personnel-name">Engineers:</span>
+                        <span id="engineer-count" class="personnel-count">0</span>
+                        <button id="hire-engineer" class="action-btn personnel-btn" disabled>
+                            Hire (200 metal)
+                        </button>
+                        <button id="fire-engineer" class="action-btn personnel-btn fire-btn" disabled>
+                            Fire
+                        </button>
+                    </div>
+                </div>
+                <div class="personnel-row">
+                    <div class="personnel-item">
+                        <span class="personnel-name">Workers:</span>
+                        <span id="worker-count" class="personnel-count">0</span>
+                        <button id="hire-worker" class="action-btn personnel-btn" disabled>
+                            Hire (100 metal)
+                        </button>
+                        <button id="fire-worker" class="action-btn personnel-btn fire-btn" disabled>
+                            Fire
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="blueprints-panel">
+                <h2>Blueprint Research & Design</h2>
+                <div id="blueprints-list" class="blueprints-container">
+                    <p style="color: #666;">No blueprints available yet.</p>
+                </div>
+            </section>
+
+            <section class="items-panel">
+                <h2>Item Production & Assignment</h2>
+                <div id="item-bonuses" class="item-bonuses" style="display: none;"></div>
+                <div id="items-list" class="items-container">
+                    <p style="color: #666;">No items available. Complete blueprints to produce items.</p>
+                </div>
+            </section>
+
             <section class="log-panel">
                 <h2>Mission Log</h2>
                 <div id="game-log" class="log-content">
