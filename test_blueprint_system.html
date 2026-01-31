@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blueprint System Test</title>
+</head>
+<body>
+    <h1>Testing Blueprint System</h1>
+    <p><strong>Note:</strong> This is an integration test that loads the full game.</p>
+    <div id="test-results"></div>
+    
+    <!-- Minimal DOM structure to prevent console errors from event listeners -->
+    <div style="display: none;">
+        <div id="metal-count"></div>
+        <div id="metal-rate"></div>
+        <div id="facility-count"></div>
+        <div id="facility-cost"></div>
+        <div id="ship-count"></div>
+        <div id="ship-cost"></div>
+        <div id="production-research-cost"></div>
+        <div id="production-level"></div>
+        <div id="exploration-research-cost"></div>
+        <div id="exploration-level"></div>
+        <div id="automation-research-cost"></div>
+        <div id="automation-level"></div>
+        <div id="researcher-count"></div>
+        <div id="engineer-count"></div>
+        <div id="worker-count"></div>
+        <div id="personnel-upkeep"></div>
+        <div id="blueprints-list"></div>
+        <div id="items-list"></div>
+        <div id="item-bonuses"></div>
+        <div id="active-rewards"></div>
+        <div id="last-update"></div>
+        <div id="game-log"></div>
+        <button id="build-facility"></button>
+        <button id="build-ship"></button>
+        <button id="research-production"></button>
+        <button id="research-exploration"></button>
+        <button id="research-automation"></button>
+        <button id="hire-researcher"></button>
+        <button id="fire-researcher"></button>
+        <button id="hire-engineer"></button>
+        <button id="fire-engineer"></button>
+        <button id="hire-worker"></button>
+        <button id="fire-worker"></button>
+        <button id="save-game"></button>
+        <button id="load-game"></button>
+        <button id="reset-game"></button>
+    </div>
+    
+    <script src="game.js"></script>
+    <script>
+        // Note: This test loads the full game.js which starts the game loop and initializes event listeners.
+        // The hidden DOM elements above prevent console errors from missing elements.
+        // Implications:
+        // - Game loop runs every 100ms, consuming minimal CPU
+        // - Event listeners attach successfully to dummy elements
+        // - Auto-save runs every 30 seconds (uses localStorage)
+        // For pure unit tests without side effects, consider extracting functions to a separate module.
+        // This integration test verifies the system works in a real game context.
+        
+        const results = document.getElementById('test-results');
+        
+        function addResult(test, passed) {
+            const div = document.createElement('div');
+            div.style.color = passed ? 'green' : 'red';
+            div.textContent = `${passed ? '✓' : '✗'} ${test}`;
+            results.appendChild(div);
+        }
+        
+        // Test 1: Check if game state has new properties
+        addResult('Game state has personnel', gameState.personnel !== undefined);
+        addResult('Game state has blueprints', gameState.blueprints !== undefined);
+        addResult('Game state has items', gameState.items !== undefined);
+        
+        // Test 2: Check if blueprint definitions exist
+        addResult('Blueprint definitions exist', blueprintDefinitions && blueprintDefinitions.length > 0);
+        addResult('Advanced Mining Array blueprint exists', 
+            blueprintDefinitions.find(b => b.id === 'advanced_mining_array') !== undefined);
+        addResult('Quantum Sensors blueprint exists', 
+            blueprintDefinitions.find(b => b.id === 'quantum_sensors') !== undefined);
+        addResult('Auto-Refinery blueprint exists', 
+            blueprintDefinitions.find(b => b.id === 'auto_refinery') !== undefined);
+        
+        // Test 3: Check if personnel costs are defined
+        addResult('Researcher costs exist', costs.personnel && costs.personnel.researcher !== undefined);
+        addResult('Engineer costs exist', costs.personnel && costs.personnel.engineer !== undefined);
+        addResult('Worker costs exist', costs.personnel && costs.personnel.worker !== undefined);
+        
+        // Test 4: Check if functions exist
+        addResult('hirePersonnel function exists', typeof hirePersonnel === 'function');
+        addResult('firePersonnel function exists', typeof firePersonnel === 'function');
+        addResult('startBlueprintResearch function exists', typeof startBlueprintResearch === 'function');
+        addResult('produceItem function exists', typeof produceItem === 'function');
+        addResult('getItemProductionBonus function exists', typeof getItemProductionBonus === 'function');
+        
+        // Test 5: Test hiring personnel
+        gameState.metal = 1000;
+        const initialResearchers = gameState.personnel.researchers;
+        hirePersonnel('researcher');
+        addResult('Can hire researcher', gameState.personnel.researchers === initialResearchers + 1);
+        
+        // Test 6: Test starting blueprint research
+        gameState.metal = 5000;
+        const blueprintCountBefore = gameState.blueprints.length;
+        startBlueprintResearch('advanced_mining_array');
+        addResult('Can start blueprint research', gameState.blueprints.length === blueprintCountBefore + 1);
+        
+        // Test 7: Test item production bonus calculation
+        const bonus = getItemProductionBonus();
+        addResult('Item production bonus calculation works', typeof bonus === 'number' && bonus >= 1);
+        
+        console.log('All tests completed. Check results above.');
+    </script>
+</body>
+</html>
