@@ -654,7 +654,7 @@ function updateCelestialBodiesUI() {
         if (isExplored) {
             html += '<span class="status-explored">✓ Explored</span>';
         } else if (activeMission) {
-            const progress = ((gameState.day - activeMission.startDay) / body.distance * 100).toFixed(0);
+            const progress = Math.min(100, ((gameState.day - activeMission.startDay) / body.distance * 100)).toFixed(0);
             html += `<span class="status-exploring">🚀 In Progress (${progress}%)</span>`;
         } else {
             html += `<span class="status-unexplored">• Unexplored</span>`;

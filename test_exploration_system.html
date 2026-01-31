@@ -131,6 +131,7 @@
         const titan = celestialBodies.find(b => b.id === 'titan');
         gameState.day = mission.completionDay;
         const beforeExplored = gameState.exploredBodies.length;
+        const beforeProductionBonus = gameState.activeRewards.productionBonus || 0;
         completeMission(mission);
         addResult('Mission completion increases explored count', gameState.exploredBodies.length === beforeExplored + 1);
         addResult('Titan is marked as explored', gameState.exploredBodies.includes('titan'));
@@ -138,7 +139,8 @@
         
         // Test 12: Test rewards applied
         addResult('Metal reward applied', gameState.metal >= titan.rewards.metal);
-        addResult('Production bonus applied', gameState.activeRewards.productionBonus === titan.rewards.bonus.value);
+        const expectedBonus = beforeProductionBonus + titan.rewards.bonus.value;
+        addResult('Production bonus applied', Math.abs(gameState.activeRewards.productionBonus - expectedBonus) < 0.001);
         
         // Test 13: Test cannot start explored body again
         const titanCheckExplored = canStartMission('titan');
