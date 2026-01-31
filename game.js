@@ -22,8 +22,13 @@ const gameState = {
     personnel: {
         researchers: 0,
         engineers: 0,
-        workers: 0
+        workers: 0,
+        cartographers: 0
     },
+    // Remote mining facilities system
+    unstableElements: 0, // New resource from remote facilities
+    remoteFacilities: 0, // Number of established remote facilities
+    discoveryProgress: 0, // Progress towards discovering next facility location
     // Blueprint system
     blueprints: [], // Array of blueprint objects
     // Items system
@@ -43,8 +48,10 @@ const costs = {
     personnel: {
         researcher: { hire: 150, upkeep: 10 },
         engineer: { hire: 200, upkeep: 15 },
-        worker: { hire: 100, upkeep: 8 }
-    }
+        worker: { hire: 100, upkeep: 8 },
+        cartographer: { hire: 250, upkeep: 12 }
+    },
+    remoteFacility: 500 // Cost to establish a remote facility
 };
 
 // Blueprint definitions
@@ -151,7 +158,8 @@ function getResearchCost(type) {
 const personnelTypeMap = {
     researcher: 'researchers',
     engineer: 'engineers',
-    worker: 'workers'
+    worker: 'workers',
+    cartographer: 'cartographers'
 };
 
 function hirePersonnel(type) {
@@ -181,6 +189,7 @@ function getPersonnelUpkeep() {
     total += gameState.personnel.researchers * costs.personnel.researcher.upkeep;
     total += gameState.personnel.engineers * costs.personnel.engineer.upkeep;
     total += gameState.personnel.workers * costs.personnel.worker.upkeep;
+    total += gameState.personnel.cartographers * costs.personnel.cartographer.upkeep;
     return total;
 }
 
@@ -190,6 +199,43 @@ function deductPersonnelUpkeep() {
         gameState.metal = Math.max(0, gameState.metal - upkeep);
         addLogEntry(`Personnel upkeep deducted: ${upkeep} metal alloys`);
     }
+}
+
+// Remote Mining Facility functions
+function getDiscoveryChance() {
+    // Base 5% chance per cartographer per day
+    const baseChance = 0.05;
+    return Math.min(0.95, gameState.personnel.cartographers * baseChance);
+}
+
+function attemptDiscovery() {
+    if (gameState.personnel.cartographers === 0) return;
+    
+    const chance = getDiscoveryChance();
+    if (Math.random() < chance) {
+        addLogEntry(`🎉 Cartographers discovered a suitable location in Saturn's ring for a remote mining facility!`);
+        gameState.discoveryProgress++;
+        return true;
+    }
+    return false;
+}
+
+function establishRemoteFacility() {
+    const cost = costs.remoteFacility;
+    if (gameState.metal >= cost && gameState.discoveryProgress > 0) {
+        gameState.metal -= cost;
+        gameState.remoteFacilities++;
+        gameState.discoveryProgress--;
+        addLogEntry(`Remote mining facility established! Now operating ${gameState.remoteFacilities} remote facilities.`);
+        updateUI();
+        return true;
+    }
+    return false;
+}
+
+function getUnstableElementsRate() {
+    // Each remote facility generates 0.5 unstable elements per second
+    return gameState.remoteFacilities * 0.5;
 }
 
 // Blueprint management functions
@@ -350,6 +396,16 @@ function updateUI() {
     document.getElementById('metal-count').textContent = Math.floor(gameState.metal).toLocaleString();
     document.getElementById('metal-rate').textContent = getProductionRate().toFixed(1);
     
+    // Update unstable elements display
+    const unstableDisplay = document.getElementById('unstable-elements-count');
+    if (unstableDisplay) {
+        unstableDisplay.textContent = Math.floor(gameState.unstableElements).toLocaleString();
+    }
+    const unstableRate = document.getElementById('unstable-elements-rate');
+    if (unstableRate) {
+        unstableRate.textContent = getUnstableElementsRate().toFixed(1);
+    }
+    
     // Facilities
     document.getElementById('facility-count').textContent = gameState.facilities;
     const facilityCost = getFacilityCost();
@@ -361,6 +417,24 @@ function updateUI() {
     const shipCost = getShipCost();
     document.getElementById('ship-cost').textContent = shipCost.toLocaleString();
     document.getElementById('build-ship').disabled = gameState.metal < shipCost;
+    
+    // Remote facilities
+    const remoteFacilityCount = document.getElementById('remote-facility-count');
+    if (remoteFacilityCount) {
+        remoteFacilityCount.textContent = gameState.remoteFacilities;
+    }
+    const discoveryCount = document.getElementById('discovery-count');
+    if (discoveryCount) {
+        discoveryCount.textContent = gameState.discoveryProgress;
+    }
+    const establishButton = document.getElementById('establish-remote-facility');
+    if (establishButton) {
+        establishButton.disabled = gameState.metal < costs.remoteFacility || gameState.discoveryProgress === 0;
+    }
+    const facilityCostDisplay = document.getElementById('remote-facility-cost');
+    if (facilityCostDisplay) {
+        facilityCostDisplay.textContent = costs.remoteFacility.toLocaleString();
+    }
     
     // Research
     updateResearchUI('production', 'Production Efficiency');
@@ -378,6 +452,26 @@ function updateUI() {
     
     // Active rewards display
     updateActiveRewardsUI();
+    
+    // Show/hide remote facilities section when cartographers are hired
+    const remoteFacilitiesSection = document.getElementById('remote-facilities-section');
+    if (remoteFacilitiesSection) {
+        if (gameState.personnel.cartographers > 0 || gameState.remoteFacilities > 0 || gameState.discoveryProgress > 0) {
+            remoteFacilitiesSection.style.display = 'block';
+        } else {
+            remoteFacilitiesSection.style.display = 'none';
+        }
+    }
+    
+    // Show/hide unstable elements resource when remote facilities exist
+    const unstableElementsRow = document.getElementById('unstable-elements-row');
+    if (unstableElementsRow) {
+        if (gameState.remoteFacilities > 0 || gameState.unstableElements > 0) {
+            unstableElementsRow.style.display = 'block';
+        } else {
+            unstableElementsRow.style.display = 'none';
+        }
+    }
     
     // Footer
     const now = new Date();
@@ -430,15 +524,30 @@ function updatePersonnelUI() {
     document.getElementById('engineer-count').textContent = gameState.personnel.engineers;
     document.getElementById('worker-count').textContent = gameState.personnel.workers;
     
+    const cartographerCount = document.getElementById('cartographer-count');
+    if (cartographerCount) {
+        cartographerCount.textContent = gameState.personnel.cartographers;
+    }
+    
     // Update hire button states
     document.getElementById('hire-researcher').disabled = gameState.metal < costs.personnel.researcher.hire;
     document.getElementById('hire-engineer').disabled = gameState.metal < costs.personnel.engineer.hire;
     document.getElementById('hire-worker').disabled = gameState.metal < costs.personnel.worker.hire;
     
+    const hireCartographer = document.getElementById('hire-cartographer');
+    if (hireCartographer) {
+        hireCartographer.disabled = gameState.metal < costs.personnel.cartographer.hire;
+    }
+    
     // Update fire button states
     document.getElementById('fire-researcher').disabled = gameState.personnel.researchers === 0;
     document.getElementById('fire-engineer').disabled = gameState.personnel.engineers === 0;
     document.getElementById('fire-worker').disabled = gameState.personnel.workers === 0;
+    
+    const fireCartographer = document.getElementById('fire-cartographer');
+    if (fireCartographer) {
+        fireCartographer.disabled = gameState.personnel.cartographers === 0;
+    }
     
     // Update upkeep display
     const upkeep = getPersonnelUpkeep();
@@ -837,6 +946,9 @@ function gameLoop() {
     // Produce metal
     gameState.metal += getProductionRate() * deltaTime;
     
+    // Produce unstable elements from remote facilities
+    gameState.unstableElements += getUnstableElementsRate() * deltaTime;
+    
     // Update day counter (every 60 seconds = 1 day)
     const elapsedTime = Date.now() - gameState.gameStartTime;
     const newDay = Math.floor(elapsedTime / 60000) + 1;
@@ -880,6 +992,9 @@ function gameLoop() {
         
         // Trigger exploration events
         triggerExplorationEvent();
+        
+        // Attempt discovery of remote facility locations
+        attemptDiscovery();
         
         // Random events (less frequent now that we have exploration events)
         if (Math.random() < 0.1 && gameState.ships > 0) {
@@ -959,8 +1074,12 @@ function resetGame() {
         gameState.personnel = {
             researchers: 0,
             engineers: 0,
-            workers: 0
+            workers: 0,
+            cartographers: 0
         };
+        gameState.unstableElements = 0;
+        gameState.remoteFacilities = 0;
+        gameState.discoveryProgress = 0;
         gameState.blueprints = [];
         gameState.items = [];
         gameState.itemIdCounter = 0;
@@ -997,6 +1116,22 @@ document.getElementById('hire-engineer').addEventListener('click', () => hirePer
 document.getElementById('fire-engineer').addEventListener('click', () => firePersonnel('engineer'));
 document.getElementById('hire-worker').addEventListener('click', () => hirePersonnel('worker'));
 document.getElementById('fire-worker').addEventListener('click', () => firePersonnel('worker'));
+
+// Cartographer event listeners
+const hireCartographerBtn = document.getElementById('hire-cartographer');
+if (hireCartographerBtn) {
+    hireCartographerBtn.addEventListener('click', () => hirePersonnel('cartographer'));
+}
+const fireCartographerBtn = document.getElementById('fire-cartographer');
+if (fireCartographerBtn) {
+    fireCartographerBtn.addEventListener('click', () => firePersonnel('cartographer'));
+}
+
+// Remote facility event listeners
+const establishButton = document.getElementById('establish-remote-facility');
+if (establishButton) {
+    establishButton.addEventListener('click', establishRemoteFacility);
+}
 
 document.getElementById('save-game').addEventListener('click', saveGame);
 document.getElementById('load-game').addEventListener('click', loadGame);
@@ -1040,8 +1175,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState.personnel = {
                     researchers: 0,
                     engineers: 0,
-                    workers: 0
+                    workers: 0,
+                    cartographers: 0
                 };
+            }
+            // Ensure cartographers exists for old saves
+            if (gameState.personnel.cartographers === undefined) {
+                gameState.personnel.cartographers = 0;
+            }
+            // Ensure remote mining facilities exist for old saves
+            if (gameState.unstableElements === undefined) {
+                gameState.unstableElements = 0;
+            }
+            if (gameState.remoteFacilities === undefined) {
+                gameState.remoteFacilities = 0;
+            }
+            if (gameState.discoveryProgress === undefined) {
+                gameState.discoveryProgress = 0;
             }
             // Ensure blueprints exists for old saves
             if (!gameState.blueprints) {

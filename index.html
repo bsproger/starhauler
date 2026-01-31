@@ -24,6 +24,11 @@
                     <span id="metal-count" class="resource-value">0</span>
                     <span class="resource-rate">(+<span id="metal-rate">1.0</span>/s)</span>
                 </div>
+                <div class="resource-item" id="unstable-elements-row" style="display: none;">
+                    <span class="resource-name">Unstable Elements:</span>
+                    <span id="unstable-elements-count" class="resource-value">0</span>
+                    <span class="resource-rate">(+<span id="unstable-elements-rate">0.0</span>/s)</span>
+                </div>
                 <div id="active-rewards" class="active-rewards" style="display: none;"></div>
             </section>
 
@@ -48,6 +53,26 @@
                 <button id="build-ship" class="action-btn" disabled>
                     Build Explorer Ship
                     <br><small>Cost: <span id="ship-cost">50</span> Metal Alloys</small>
+                </button>
+            </section>
+
+            <section class="remote-facilities-panel" id="remote-facilities-section" style="display: none;">
+                <h2>Remote Mining Facilities</h2>
+                <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;">
+                    Cartographers can discover suitable locations in Saturn's ring for remote mining facilities. 
+                    These facilities produce unstable elements crucial for interplanetary propulsion technology.
+                </p>
+                <div class="facility-item">
+                    <span class="facility-name">Discovered Locations:</span>
+                    <span id="discovery-count" class="facility-value">0</span>
+                </div>
+                <div class="facility-item">
+                    <span class="facility-name">Remote Facilities:</span>
+                    <span id="remote-facility-count" class="facility-value">0</span>
+                </div>
+                <button id="establish-remote-facility" class="action-btn" disabled>
+                    Establish Remote Facility
+                    <br><small>Cost: <span id="remote-facility-cost">500</span> Metal Alloys</small>
                 </button>
             </section>
 
@@ -113,6 +138,18 @@
                             Hire (100 metal)
                         </button>
                         <button id="fire-worker" class="action-btn personnel-btn fire-btn" disabled>
+                            Fire
+                        </button>
+                    </div>
+                </div>
+                <div class="personnel-row">
+                    <div class="personnel-item">
+                        <span class="personnel-name">Cartographers:</span>
+                        <span id="cartographer-count" class="personnel-count">0</span>
+                        <button id="hire-cartographer" class="action-btn personnel-btn" disabled>
+                            Hire (250 metal)
+                        </button>
+                        <button id="fire-cartographer" class="action-btn personnel-btn fire-btn" disabled>
                             Fire
                         </button>
                     </div>
