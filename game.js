@@ -176,7 +176,16 @@ function gameLoop() {
     updateUI();
 }
 
-// Save game
+// Save game silently (for auto-save)
+function saveGameSilent() {
+    try {
+        localStorage.setItem('saturnMiningGame', JSON.stringify(gameState));
+    } catch (e) {
+        console.error('Failed to auto-save:', e);
+    }
+}
+
+// Save game (with user feedback)
 function saveGame() {
     try {
         localStorage.setItem('saturnMiningGame', JSON.stringify(gameState));
@@ -248,7 +257,7 @@ document.getElementById('reset-game').addEventListener('click', resetGame);
 
 // Auto-save every 30 seconds
 setInterval(() => {
-    saveGame();
+    saveGameSilent();
 }, 30000);
 
 // Initialize game
