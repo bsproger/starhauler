@@ -34,14 +34,6 @@ const gameState = {
     // Items system
     items: [], // Array of produced items
     itemIdCounter: 0, // Counter for generating unique item IDs
-// Monolith event system
-    monolith: {
-        discovered: false, // Whether the monolith has been found
-        translating: false, // Whether translation is in progress
-        translated: false, // Whether translation is complete
-        translationProgress: 0, // Progress towards translation (0-100)
-        researchersAssigned: 0 // Number of researchers working on translation
-    },
     // Tech tree system for interplanetary travel
     techTree: {
         researched: [], // IDs of completed technologies
@@ -1425,9 +1417,6 @@ function gameLoop() {
         // Update item production progress
         updateItemProduction();
         
-        // Update monolith translation progress
-        updateMonolithTranslation();
-        
         // Update tech tree progress
         updateTechProgress();
         
@@ -1714,16 +1703,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 gameState.itemIdCounter = maxId;
-            }
-            // Ensure monolith exists for old saves
-            if (!gameState.monolith) {
-                gameState.monolith = {
-                    discovered: false,
-                    translating: false,
-                    translated: false,
-                    translationProgress: 0,
-                    researchersAssigned: 0
-                };
             }
             // Ensure tech tree exists for old saves
             if (!gameState.techTree) {
