@@ -31,6 +31,18 @@ const costs = {
     }
 };
 
+// Event system constants
+const eventConfig = {
+    baseTriggerChance: 0.25,          // 25% base chance per day
+    researchTriggerBonus: 0.05,       // +5% per exploration research level
+    shipTriggerBonus: 0.02,            // +2% per ship
+    maxShipTriggerBonus: 0.20,         // Max +20% from ships
+    basePositiveChance: 0.70,          // 70% base chance for positive events
+    researchPositiveBonus: 0.03,       // +3% positive chance per exploration level
+    minCooldownDays: 1,                // Minimum cooldown between events
+    maxCooldownDays: 3                 // Maximum cooldown between events
+};
+
 // Production rates
 const baseProductionRate = 1.0; // metal per second per facility
 
@@ -218,7 +230,7 @@ const explorationEvents = {
             message: '⚠️ Critical equipment malfunction in mining facility! Production reduced by 10% temporarily until repairs.',
             effect: () => {
                 // Temporary penalty that will be "repaired" after a few days
-                gameState.activeRewards.productionBonus = Math.max(-0.10, (gameState.activeRewards.productionBonus || 0) - 0.10);
+                gameState.activeRewards.productionBonus = (gameState.activeRewards.productionBonus || 0) - 0.10;
                 // Schedule repair for 2 days later
                 gameState.pendingRepairs.push({
                     type: 'production',
@@ -240,7 +252,7 @@ const explorationEvents = {
             name: 'Asteroid Collision',
             message: '⚠️ Minor asteroid collision damaged ship sensors. Exploration efficiency reduced by 5% until repairs.',
             effect: () => {
-                gameState.activeRewards.explorationBonus = Math.max(-0.15, (gameState.activeRewards.explorationBonus || 0) - 0.05);
+                gameState.activeRewards.explorationBonus = (gameState.activeRewards.explorationBonus || 0) - 0.05;
                 // Schedule repair for 2 days later
                 gameState.pendingRepairs.push({
                     type: 'exploration',
@@ -269,14 +281,14 @@ function triggerExplorationEvent() {
     }
 
     // Calculate event probability based on exploration research and ship count
-    const baseChance = 0.25; // 25% base chance per day
-    const researchBonus = gameState.research.exploration * 0.05; // +5% per exploration level
-    const shipBonus = Math.min(gameState.ships * 0.02, 0.20); // +2% per ship, max +20%
+    const baseChance = eventConfig.baseTriggerChance;
+    const researchBonus = gameState.research.exploration * eventConfig.researchTriggerBonus;
+    const shipBonus = Math.min(gameState.ships * eventConfig.shipTriggerBonus, eventConfig.maxShipTriggerBonus);
     const eventChance = baseChance + researchBonus + shipBonus;
 
     if (Math.random() < eventChance) {
-        // Determine if positive or negative (70% positive, 30% negative with higher exploration)
-        const positiveChance = 0.70 + (gameState.research.exploration * 0.03); // Better research = more positive events
+        // Determine if positive or negative (70% positive base, increases with exploration research)
+        const positiveChance = eventConfig.basePositiveChance + (gameState.research.exploration * eventConfig.researchPositiveBonus);
         const isPositive = Math.random() < positiveChance;
 
         const eventList = isPositive ? explorationEvents.positive : explorationEvents.negative;
@@ -294,7 +306,7 @@ function triggerExplorationEvent() {
         addLogEntry(fullMessage);
         
         // Set cooldown (1-3 days)
-        gameState.eventCooldown = Math.floor(Math.random() * 3) + 1;
+        gameState.eventCooldown = Math.floor(Math.random() * (eventConfig.maxCooldownDays - eventConfig.minCooldownDays + 1)) + eventConfig.minCooldownDays;
         
         updateUI();
     }
@@ -369,10 +381,10 @@ function gameLoop() {
                 if (gameState.day >= repair.completionDay) {
                     // Complete the repair
                     if (repair.type === 'production') {
-                        gameState.activeRewards.productionBonus = Math.min(1.0, (gameState.activeRewards.productionBonus || 0) + repair.amount);
+                        gameState.activeRewards.productionBonus = (gameState.activeRewards.productionBonus || 0) + repair.amount;
                         addLogEntry('Repairs completed. Production systems back to normal.');
                     } else if (repair.type === 'exploration') {
-                        gameState.activeRewards.explorationBonus = Math.min(1.0, (gameState.activeRewards.explorationBonus || 0) + repair.amount);
+                        gameState.activeRewards.explorationBonus = (gameState.activeRewards.explorationBonus || 0) + repair.amount;
                         addLogEntry('Ship repairs completed. Sensors back online.');
                     }
                 } else {
