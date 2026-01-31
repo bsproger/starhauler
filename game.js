@@ -190,7 +190,11 @@ const eventConfig = {
     basePositiveChance: 0.70,          // 70% base chance for positive events
     researchPositiveBonus: 0.03,       // +3% positive chance per exploration level
     minCooldownDays: 1,                // Minimum cooldown between events
-    maxCooldownDays: 3                 // Maximum cooldown between events
+    maxCooldownDays: 3,                // Maximum cooldown between events
+    // Monolith discovery requirements
+    monolithMinShips: 3,               // Minimum ships required to discover monolith
+    monolithMinExploration: 2,         // Minimum exploration research level required
+    monolithProgressPerResearcher: 5   // Translation progress % per researcher per day
 };
 
 // Production rates
@@ -320,6 +324,91 @@ function establishRemoteFacility() {
 function getUnstableElementsRate() {
     // Each remote facility generates 0.5 unstable elements per second
     return gameState.remoteFacilities * 0.5;
+}
+
+// Monolith translation system functions
+function startMonolithTranslation() {
+    if (!gameState.monolith.discovered) {
+        return;
+    }
+    
+    if (gameState.monolith.translating) {
+        addLogEntry('Translation is already in progress.');
+        return;
+    }
+    
+    if (gameState.monolith.translated) {
+        addLogEntry('The monolith symbols have already been translated.');
+        return;
+    }
+    
+    if (gameState.personnel.researchers < 1) {
+        addLogEntry('You need at least 1 researcher to begin translation work.');
+        return;
+    }
+    
+    gameState.monolith.translating = true;
+    gameState.monolith.researchersAssigned = gameState.personnel.researchers;
+    addLogEntry(`${gameState.personnel.researchers} researcher${gameState.personnel.researchers > 1 ? 's are' : ' is'} now working on translating the monolith symbols...`);
+    updateUI();
+}
+
+function stopMonolithTranslation() {
+    if (!gameState.monolith.translating) {
+        return;
+    }
+    
+    gameState.monolith.translating = false;
+    gameState.monolith.researchersAssigned = 0;
+    addLogEntry('Translation work paused. Researchers returned to normal duties.');
+    updateUI();
+}
+
+function updateMonolithTranslation() {
+    if (!gameState.monolith.translating || gameState.monolith.translated) {
+        return;
+    }
+    
+    // Each researcher contributes to progress per day
+    // More researchers = faster translation
+    const progressPerDay = gameState.monolith.researchersAssigned * eventConfig.monolithProgressPerResearcher;
+    gameState.monolith.translationProgress = Math.min(100, gameState.monolith.translationProgress + progressPerDay);
+    
+    if (gameState.monolith.translationProgress >= 100) {
+        gameState.monolith.translated = true;
+        gameState.monolith.translating = false;
+        revealMonolithBackstory();
+    }
+    
+    updateUI();
+}
+
+function revealMonolithBackstory() {
+    const backstory = `
+🌟 TRANSLATION COMPLETE 🌟
+
+After days of painstaking work, your researchers have finally deciphered the symbols on the monolith. The revelation is staggering:
+
+The monolith is not a monument—it is a message, left by an ancient civilization known as the Architects. Billions of years ago, they seeded the galaxy with these markers, warning future spacefaring species of a great cosmic cycle.
+
+The symbols tell of "The Convergence"—a predictable but catastrophic event when dark matter currents shift throughout the galaxy, disrupting all stable orbits and rendering most solar systems uninhabitable for millions of years.
+
+But there is hope encoded in the final glyphs: The Architects left behind fragments of their technology scattered across moons and planets, technologies that could allow a species to transcend their physical form and survive The Convergence as pure energy beings.
+
+Saturn's rings are not natural—they are the remnants of an ancient Architect facility, destroyed in a previous cycle. The unstable elements you've been mining are not random; they are the key to unlocking this transformation.
+
+Your mission has changed forever. You are no longer just mining metal—you are racing against time to gather the knowledge and resources needed to ensure humanity's survival through The Convergence.
+
+The countdown has begun...
+    `.trim();
+    
+    addLogEntry(backstory);
+    
+    // Grant permanent bonuses as a reward for completing this storyline
+    gameState.activeRewards.productionBonus += 0.50; // +50% production
+    gameState.activeRewards.explorationBonus += 0.30; // +30% exploration
+    
+    addLogEntry('🎁 The knowledge from the monolith has revolutionized your operations! Production +50%, Exploration +30%');
 }
 
 // Blueprint management functions
@@ -622,6 +711,9 @@ function updateUI() {
     
     // Items
     updateItemsUI();
+    
+    // Monolith
+    updateMonolithUI();
     
     // Active rewards display
     updateActiveRewardsUI();
@@ -985,6 +1077,64 @@ function updateItemBonusesDisplay() {
     }
 }
 
+// Update monolith UI
+function updateMonolithUI() {
+    const monolithSection = document.getElementById('monolith-section');
+    if (!monolithSection) return;
+    
+    // Only show if discovered
+    if (!gameState.monolith.discovered) {
+        monolithSection.style.display = 'none';
+        return;
+    }
+    
+    monolithSection.style.display = 'block';
+    
+    const statusElement = document.getElementById('monolith-status');
+    const progressElement = document.getElementById('monolith-progress');
+    const actionButton = document.getElementById('monolith-action');
+    const backstoryElement = document.getElementById('monolith-backstory');
+    
+    if (gameState.monolith.translated) {
+        statusElement.textContent = 'Translation Complete';
+        if (progressElement) progressElement.style.display = 'none';
+        if (actionButton) actionButton.style.display = 'none';
+        if (backstoryElement) backstoryElement.style.display = 'block';
+    } else if (gameState.monolith.translating) {
+        statusElement.textContent = `Translating... (${gameState.monolith.researchersAssigned} researcher${gameState.monolith.researchersAssigned > 1 ? 's' : ''} assigned)`;
+        if (progressElement) {
+            progressElement.style.display = 'block';
+            progressElement.innerHTML = `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${gameState.monolith.translationProgress}%"></div>
+                </div>
+                <div class="progress-text">Progress: ${gameState.monolith.translationProgress.toFixed(0)}%</div>
+            `;
+        }
+        if (actionButton) {
+            actionButton.textContent = 'Stop Translation';
+            actionButton.disabled = false;
+            actionButton.style.display = 'inline-block';
+        }
+    } else {
+        statusElement.textContent = 'Ready to begin translation';
+        if (progressElement) {
+            progressElement.style.display = 'block';
+            progressElement.innerHTML = `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${gameState.monolith.translationProgress}%"></div>
+                </div>
+                <div class="progress-text">Progress: ${gameState.monolith.translationProgress.toFixed(0)}%</div>
+            `;
+        }
+        if (actionButton) {
+            actionButton.textContent = 'Start Translation';
+            actionButton.disabled = gameState.personnel.researchers < 1;
+            actionButton.style.display = 'inline-block';
+        }
+    }
+}
+
 // Add log entry
 function addLogEntry(message) {
     const logContent = document.getElementById('game-log');
@@ -1060,6 +1210,22 @@ const explorationEvents = {
             }
         }
     ],
+    special: [
+        {
+            name: 'Mysterious Monolith',
+            message: '🌙 EXTRAORDINARY DISCOVERY: Explorer ship has landed on Titan and discovered a mysterious monolith! The structure is covered in intricate, glowing symbols of unknown origin. This could change everything we know about the universe...',
+            effect: () => {
+                gameState.monolith.discovered = true;
+                return '';
+            },
+            condition: () => {
+                // Only trigger if not yet discovered, have ships, and high exploration level
+                return !gameState.monolith.discovered && 
+                       gameState.ships >= eventConfig.monolithMinShips && 
+                       gameState.research.exploration >= eventConfig.monolithMinExploration;
+            }
+        }
+    ],
     negative: [
         {
             name: 'Solar Storm',
@@ -1123,6 +1289,26 @@ function triggerExplorationEvent() {
     // Only trigger if we have ships and cooldown has expired
     if (gameState.ships === 0 || gameState.eventCooldown > 0) {
         return;
+    }
+
+    // Check for special events first (like monolith discovery)
+    if (explorationEvents.special) {
+        for (const specialEvent of explorationEvents.special) {
+            if (specialEvent.condition && specialEvent.condition()) {
+                // Trigger special event
+                let fullMessage = specialEvent.message;
+                if (specialEvent.effect) {
+                    const effectResult = specialEvent.effect();
+                    if (effectResult) {
+                        fullMessage += effectResult;
+                    }
+                }
+                addLogEntry(fullMessage);
+                gameState.eventCooldown = Math.floor(Math.random() * (eventConfig.maxCooldownDays - eventConfig.minCooldownDays + 1)) + eventConfig.minCooldownDays;
+                updateUI();
+                return; // Don't trigger normal events when special event occurs
+            }
+        }
     }
 
     // Calculate event probability based on exploration research and ship count
@@ -1353,6 +1539,13 @@ function resetGame() {
         gameState.blueprints = [];
         gameState.items = [];
         gameState.itemIdCounter = 0;
+        gameState.monolith = {
+            discovered: false,
+            translating: false,
+            translated: false,
+            translationProgress: 0,
+            researchersAssigned: 0
+        };
         gameState.techTree = {
             researched: [],
             inProgress: null
@@ -1405,6 +1598,18 @@ if (fireCartographerBtn) {
 const establishButton = document.getElementById('establish-remote-facility');
 if (establishButton) {
     establishButton.addEventListener('click', establishRemoteFacility);
+}
+
+// Monolith event listeners
+const monolithActionBtn = document.getElementById('monolith-action');
+if (monolithActionBtn) {
+    monolithActionBtn.addEventListener('click', () => {
+        if (gameState.monolith.translating) {
+            stopMonolithTranslation();
+        } else {
+            startMonolithTranslation();
+        }
+    });
 }
 
 document.getElementById('save-game').addEventListener('click', saveGame);
