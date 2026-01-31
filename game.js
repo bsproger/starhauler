@@ -10,7 +10,13 @@ const gameState = {
     },
     day: 1,
     gameStartTime: Date.now(),
-    lastUpdate: Date.now()
+    lastUpdate: Date.now(),
+    activeRewards: {
+        explorationBonus: 0, // Bonus to exploration effectiveness
+        productionBonus: 0, // Bonus to production rate
+        temporaryMetalBonus: 0 // One-time metal bonuses
+    },
+    eventCooldown: 0 // Days until next event can trigger
 };
 
 // Game constants and costs
@@ -32,7 +38,8 @@ function getProductionRate() {
     const baseRate = gameState.facilities * baseProductionRate;
     const productionBonus = 1 + (gameState.research.production * 0.25); // +25% per level
     const automationBonus = 1 + (gameState.research.automation * 0.15); // +15% per level
-    return baseRate * productionBonus * automationBonus;
+    const rewardBonus = 1 + (gameState.activeRewards.productionBonus || 0); // Reward bonus from events
+    return baseRate * productionBonus * automationBonus * rewardBonus;
 }
 
 // Calculate costs with scaling
@@ -73,9 +80,42 @@ function updateUI() {
     updateResearchUI('exploration', 'Exploration Range');
     updateResearchUI('automation', 'Automated Systems');
     
+    // Active rewards display
+    updateActiveRewardsUI();
+    
     // Footer
     const now = new Date();
     document.getElementById('last-update').textContent = now.toLocaleTimeString();
+}
+
+function updateActiveRewardsUI() {
+    const rewardsElement = document.getElementById('active-rewards');
+    if (!rewardsElement) return;
+    
+    const rewards = [];
+    
+    if (gameState.activeRewards.explorationBonus > 0) {
+        rewards.push(`⭐ Exploration: +${(gameState.activeRewards.explorationBonus * 100).toFixed(0)}%`);
+    } else if (gameState.activeRewards.explorationBonus < 0) {
+        rewards.push(`⚠️ Exploration: ${(gameState.activeRewards.explorationBonus * 100).toFixed(0)}%`);
+    }
+    
+    if (gameState.activeRewards.productionBonus > 0) {
+        rewards.push(`⭐ Production: +${(gameState.activeRewards.productionBonus * 100).toFixed(0)}%`);
+    } else if (gameState.activeRewards.productionBonus < 0) {
+        rewards.push(`⚠️ Production: ${(gameState.activeRewards.productionBonus * 100).toFixed(0)}%`);
+    }
+    
+    if (gameState.eventCooldown > 0) {
+        rewards.push(`⏳ Next event in ${gameState.eventCooldown} day${gameState.eventCooldown > 1 ? 's' : ''}`);
+    }
+    
+    if (rewards.length > 0) {
+        rewardsElement.innerHTML = '<strong>Active Effects:</strong> ' + rewards.join(' | ');
+        rewardsElement.style.display = 'block';
+    } else {
+        rewardsElement.style.display = 'none';
+    }
 }
 
 function updateResearchUI(type, name) {
@@ -97,6 +137,164 @@ function addLogEntry(message) {
     // Keep only last 20 entries
     while (logContent.children.length > 20) {
         logContent.removeChild(logContent.lastChild);
+    }
+}
+
+// Exploration events system
+const explorationEvents = {
+    positive: [
+        {
+            name: 'Abandoned Research Station',
+            message: '🎉 Explorer discovered an abandoned research station with intact starship blueprints! Exploration efficiency increased by 20%.',
+            effect: () => {
+                gameState.activeRewards.explorationBonus += 0.20;
+            }
+        },
+        {
+            name: 'Lost Signal Discovery',
+            message: '🎉 A lost signal led to a cache of pre-processed metal alloys! Gained ',
+            effect: () => {
+                const bonus = Math.floor(gameState.ships * 50 * (1 + gameState.research.exploration * 0.1));
+                gameState.metal += bonus;
+                gameState.activeRewards.temporaryMetalBonus += bonus;
+                return `${bonus.toLocaleString()} metal alloys!`;
+            }
+        },
+        {
+            name: 'Ancient Mining Facility',
+            message: '🎉 Explorer teams found an ancient automated mining facility! Production rate increased by 15% permanently.',
+            effect: () => {
+                gameState.activeRewards.productionBonus += 0.15;
+            }
+        },
+        {
+            name: 'Technological Artifact',
+            message: '🎉 Scans revealed a technological artifact that enhances all ship systems! All ships are now 10% more effective.',
+            effect: () => {
+                gameState.activeRewards.explorationBonus += 0.10;
+            }
+        },
+        {
+            name: 'Resource-Rich Asteroid',
+            message: '🎉 Fleet located a resource-rich asteroid field! Immediate metal gain of ',
+            effect: () => {
+                const bonus = Math.floor(gameState.facilities * 200 * (1 + gameState.research.production * 0.1));
+                gameState.metal += bonus;
+                gameState.activeRewards.temporaryMetalBonus += bonus;
+                return `${bonus.toLocaleString()} metal alloys!`;
+            }
+        },
+        {
+            name: 'Efficient Route Discovery',
+            message: '🎉 New efficient mining routes discovered! Production efficiency increased by 10%.',
+            effect: () => {
+                gameState.activeRewards.productionBonus += 0.10;
+            }
+        },
+        {
+            name: 'Rare Crystal Formation',
+            message: '🎉 Explorers discovered rare crystal formations with valuable properties! Technology advancement bonus applied.',
+            effect: () => {
+                const bonus = Math.floor(getResearchCost('exploration') * 0.3);
+                gameState.metal += bonus;
+                return ` Gained ${bonus.toLocaleString()} metal towards next research!`;
+            }
+        }
+    ],
+    negative: [
+        {
+            name: 'Solar Storm',
+            message: '⚠️ Intense solar storm damaged exploration equipment! Lost ',
+            effect: () => {
+                const loss = Math.floor(gameState.metal * 0.05);
+                gameState.metal = Math.max(0, gameState.metal - loss);
+                return `${loss.toLocaleString()} metal alloys to repairs.`;
+            }
+        },
+        {
+            name: 'Equipment Malfunction',
+            message: '⚠️ Critical equipment malfunction in mining facility! Production reduced by 10% temporarily until repairs.',
+            effect: () => {
+                // Temporary penalty that will be "repaired" after a few days
+                gameState.activeRewards.productionBonus = Math.max(-0.10, (gameState.activeRewards.productionBonus || 0) - 0.10);
+                // Schedule repair
+                setTimeout(() => {
+                    gameState.activeRewards.productionBonus = Math.min(1.0, (gameState.activeRewards.productionBonus || 0) + 0.10);
+                    addLogEntry('Repairs completed. Production systems back to normal.');
+                    updateUI();
+                }, 120000); // 2 minutes (2 days in game time)
+            }
+        },
+        {
+            name: 'Navigation Error',
+            message: '⚠️ Navigation system error caused fleet to search unproductive sectors. Resources wasted: ',
+            effect: () => {
+                const loss = Math.floor(gameState.ships * 20);
+                gameState.metal = Math.max(0, gameState.metal - loss);
+                return `${loss.toLocaleString()} metal alloys.`;
+            }
+        },
+        {
+            name: 'Asteroid Collision',
+            message: '⚠️ Minor asteroid collision damaged ship sensors. Exploration efficiency reduced by 5% until repairs.',
+            effect: () => {
+                gameState.activeRewards.explorationBonus = Math.max(-0.15, (gameState.activeRewards.explorationBonus || 0) - 0.05);
+                // Schedule repair
+                setTimeout(() => {
+                    gameState.activeRewards.explorationBonus = Math.min(1.0, (gameState.activeRewards.explorationBonus || 0) + 0.05);
+                    addLogEntry('Ship repairs completed. Sensors back online.');
+                    updateUI();
+                }, 90000); // 1.5 minutes
+            }
+        },
+        {
+            name: 'Communication Interference',
+            message: '⚠️ Electromagnetic interference disrupted fleet coordination. Minor efficiency loss.',
+            effect: () => {
+                const loss = Math.floor(getProductionRate() * 30); // 30 seconds of production
+                gameState.metal = Math.max(0, gameState.metal - loss);
+                return ` Lost ${loss.toLocaleString()} metal alloys.`;
+            }
+        }
+    ]
+};
+
+// Trigger exploration event
+function triggerExplorationEvent() {
+    // Only trigger if we have ships and cooldown has expired
+    if (gameState.ships === 0 || gameState.eventCooldown > 0) {
+        return;
+    }
+
+    // Calculate event probability based on exploration research and ship count
+    const baseChance = 0.25; // 25% base chance per day
+    const researchBonus = gameState.research.exploration * 0.05; // +5% per exploration level
+    const shipBonus = Math.min(gameState.ships * 0.02, 0.20); // +2% per ship, max +20%
+    const eventChance = baseChance + researchBonus + shipBonus;
+
+    if (Math.random() < eventChance) {
+        // Determine if positive or negative (70% positive, 30% negative with higher exploration)
+        const positiveChance = 0.70 + (gameState.research.exploration * 0.03); // Better research = more positive events
+        const isPositive = Math.random() < positiveChance;
+
+        const eventList = isPositive ? explorationEvents.positive : explorationEvents.negative;
+        const event = eventList[Math.floor(Math.random() * eventList.length)];
+
+        // Apply event effect
+        let fullMessage = event.message;
+        if (event.effect) {
+            const effectResult = event.effect();
+            if (effectResult) {
+                fullMessage += effectResult;
+            }
+        }
+
+        addLogEntry(fullMessage);
+        
+        // Set cooldown (1-3 days)
+        gameState.eventCooldown = Math.floor(Math.random() * 3) + 1;
+        
+        updateUI();
     }
 }
 
@@ -161,8 +359,17 @@ function gameLoop() {
     const newDay = Math.floor(elapsedTime / 60000) + 1;
     if (newDay > gameState.day) {
         gameState.day = newDay;
-        // Random events
-        if (Math.random() < 0.2 && gameState.ships > 0) {
+        
+        // Decrease event cooldown
+        if (gameState.eventCooldown > 0) {
+            gameState.eventCooldown--;
+        }
+        
+        // Trigger exploration events
+        triggerExplorationEvent();
+        
+        // Random events (less frequent now that we have exploration events)
+        if (Math.random() < 0.1 && gameState.ships > 0) {
             const events = [
                 'Exploration teams report increased mineral deposits in sector 7.',
                 'Minor solar storm passed through. All systems stable.',
@@ -229,6 +436,12 @@ function resetGame() {
         gameState.day = 1;
         gameState.gameStartTime = Date.now();
         gameState.lastUpdate = Date.now();
+        gameState.activeRewards = {
+            explorationBonus: 0,
+            productionBonus: 0,
+            temporaryMetalBonus: 0
+        };
+        gameState.eventCooldown = 0;
         
         // Clear log
         const logContent = document.getElementById('game-log');
@@ -274,6 +487,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ensure gameStartTime exists for old saves
             if (!gameState.gameStartTime) {
                 gameState.gameStartTime = Date.now();
+            }
+            // Ensure activeRewards exists for old saves
+            if (!gameState.activeRewards) {
+                gameState.activeRewards = {
+                    explorationBonus: 0,
+                    productionBonus: 0,
+                    temporaryMetalBonus: 0
+                };
+            }
+            // Ensure eventCooldown exists for old saves
+            if (gameState.eventCooldown === undefined) {
+                gameState.eventCooldown = 0;
             }
             addLogEntry('Resuming from previous session...');
         } catch (e) {
