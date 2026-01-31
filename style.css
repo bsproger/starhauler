@@ -436,6 +436,78 @@ footer {
     background: #00ff00;
 }
 
+/* Map panel styles */
+.map-panel {
+    grid-column: span 2;
+}
+
+.map-container {
+    padding: 20px;
+    background-color: #0a0a1a;
+    border: 2px solid #00ffff;
+    border-radius: 5px;
+}
+
+.celestial-body {
+    text-align: center;
+    padding: 15px;
+    margin: 10px;
+    background-color: #1a1a2e;
+    border: 2px solid #006666;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.celestial-body:hover {
+    border-color: #00ffff;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+.saturn {
+    margin-bottom: 20px;
+    border-color: #ff9900;
+    background: linear-gradient(135deg, #1a1a2e 0%, #2a2a3e 100%);
+}
+
+.saturn:hover {
+    border-color: #ffaa00;
+    box-shadow: 0 0 20px rgba(255, 153, 0, 0.4);
+}
+
+.body-icon {
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+.body-name {
+    color: #00ffff;
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.body-desc {
+    color: #00ff00;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+.moon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.moon .body-icon {
+    font-size: 2em;
+}
+
+.moon .body-name {
+    font-size: 1.1em;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     body {
