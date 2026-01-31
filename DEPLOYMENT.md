@@ -2,23 +2,18 @@
 
 This repository is configured to automatically deploy to GitHub Pages.
 
-## One-Time Setup Required
+## Automatic Setup
 
-After merging this PR, you need to enable GitHub Pages in your repository settings:
+The deployment workflow is configured to automatically enable and configure GitHub Pages for this repository. No manual setup is required!
 
-### Steps:
-
-1. Go to your repository on GitHub: https://github.com/bsproger/starhauler
-2. Click on **Settings** (top right)
-3. Scroll down to **Pages** in the left sidebar
-4. Under **Source**, select **GitHub Actions**
-5. Save the changes
-
-That's it! The workflow will automatically deploy your game whenever you push to the `main` branch.
+When you push changes to the `main` branch, the workflow will:
+1. Automatically enable GitHub Pages (if not already enabled)
+2. Build and deploy your game
+3. Make it available at: https://bsproger.github.io/starhauler/
 
 ## Testing the Deployment
 
-1. Merge this PR to the `main` branch
+1. Push changes to the `main` branch (or merge this PR)
 2. Go to the **Actions** tab in your repository
 3. You should see a "Deploy to GitHub Pages" workflow running
 4. Once complete, your game will be live at: https://bsproger.github.io/starhauler/
@@ -35,6 +30,5 @@ You can also trigger a deployment manually:
 
 If the deployment fails:
 - Check the Actions tab for error messages
-- Ensure GitHub Pages is enabled in repository settings
-- Verify the source is set to "GitHub Actions"
-- Check that the repository is public (or you have GitHub Pro for private repos)
+- Verify the repository is public (or you have GitHub Pro for private repos with Pages)
+- Ensure the workflow has the necessary permissions (pages: write, id-token: write)
