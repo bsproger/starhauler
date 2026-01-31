@@ -962,7 +962,7 @@ const explorationEvents = {
                        gameState.research.exploration >= 2;
             }
         }
-    ]
+    ],
     negative: [
         {
             name: 'Solar Storm',
