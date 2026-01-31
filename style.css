@@ -105,6 +105,17 @@ h2 {
     margin-left: 10px;
 }
 
+.active-rewards {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #1a1a2e;
+    border: 1px solid #ffaa00;
+    color: #ffaa00;
+    font-size: 0.9em;
+    border-radius: 3px;
+    animation: fadeIn 0.5s;
+}
+
 .action-btn {
     width: 100%;
     padding: 15px;
