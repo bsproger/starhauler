@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Exploration System Test</title>
+</head>
+<body>
+    <h1>Testing Exploration System</h1>
+    <p><strong>Note:</strong> This is an integration test that loads the full game.</p>
+    <div id="test-results"></div>
+    
+    <!-- Minimal DOM structure to prevent console errors from event listeners -->
+    <div style="display: none;">
+        <div id="metal-count"></div>
+        <div id="metal-rate"></div>
+        <div id="unstable-elements-count"></div>
+        <div id="unstable-elements-rate"></div>
+        <div id="unstable-elements-row"></div>
+        <div id="facility-count"></div>
+        <div id="facility-cost"></div>
+        <div id="ship-count"></div>
+        <div id="ship-cost"></div>
+        <div id="production-research-cost"></div>
+        <div id="production-level"></div>
+        <div id="exploration-research-cost"></div>
+        <div id="exploration-level"></div>
+        <div id="automation-research-cost"></div>
+        <div id="automation-level"></div>
+        <div id="researcher-count"></div>
+        <div id="engineer-count"></div>
+        <div id="worker-count"></div>
+        <div id="cartographer-count"></div>
+        <div id="personnel-upkeep"></div>
+        <div id="blueprints-list"></div>
+        <div id="items-list"></div>
+        <div id="item-bonuses"></div>
+        <div id="active-rewards"></div>
+        <div id="last-update"></div>
+        <div id="game-log"></div>
+        <div id="remote-facility-count"></div>
+        <div id="discovery-count"></div>
+        <div id="remote-facilities-section"></div>
+        <div id="celestial-bodies-list"></div>
+        <div id="celestial-bodies-section"></div>
+        <button id="build-facility"></button>
+        <button id="build-ship"></button>
+        <button id="research-production"></button>
+        <button id="research-exploration"></button>
+        <button id="research-automation"></button>
+        <button id="hire-researcher"></button>
+        <button id="fire-researcher"></button>
+        <button id="hire-engineer"></button>
+        <button id="fire-engineer"></button>
+        <button id="hire-worker"></button>
+        <button id="fire-worker"></button>
+        <button id="hire-cartographer"></button>
+        <button id="fire-cartographer"></button>
+        <button id="establish-remote-facility"></button>
+        <button id="save-game"></button>
+        <button id="load-game"></button>
+        <button id="reset-game"></button>
+    </div>
+    
+    <script src="game.js"></script>
+    <script>
+        const results = document.getElementById('test-results');
+        
+        function addResult(test, passed) {
+            const div = document.createElement('div');
+            div.style.color = passed ? 'green' : 'red';
+            div.textContent = `${passed ? '✓' : '✗'} ${test}`;
+            results.appendChild(div);
+        }
+        
+        // Test 1: Check if celestial bodies array exists and has entries
+        addResult('Celestial bodies array exists', celestialBodies !== undefined);
+        addResult('Celestial bodies has 8 entries', celestialBodies && celestialBodies.length === 8);
+        
+        // Test 2: Check specific celestial bodies
+        addResult('Titan exists', celestialBodies.find(b => b.id === 'titan') !== undefined);
+        addResult('Enceladus exists', celestialBodies.find(b => b.id === 'enceladus') !== undefined);
+        addResult('Hyperion exists', celestialBodies.find(b => b.id === 'hyperion') !== undefined);
+        
+        // Test 3: Check if game state has exploration properties
+        addResult('Game state has exploredBodies', gameState.exploredBodies !== undefined);
+        addResult('Game state has activeMissions', gameState.activeMissions !== undefined);
+        addResult('exploredBodies is empty array', Array.isArray(gameState.exploredBodies) && gameState.exploredBodies.length === 0);
+        addResult('activeMissions is empty array', Array.isArray(gameState.activeMissions) && gameState.activeMissions.length === 0);
+        
+        // Test 4: Check if functions exist
+        addResult('canStartMission function exists', typeof canStartMission === 'function');
+        addResult('startExplorationMission function exists', typeof startExplorationMission === 'function');
+        addResult('completeMission function exists', typeof completeMission === 'function');
+        addResult('checkMissionCompletion function exists', typeof checkMissionCompletion === 'function');
+        addResult('updateCelestialBodiesUI function exists', typeof updateCelestialBodiesUI === 'function');
+        
+        // Test 5: Test canStartMission logic
+        const titanCheck = canStartMission('titan');
+        addResult('canStartMission returns object', typeof titanCheck === 'object');
+        addResult('Titan cannot start (no ships)', titanCheck.canStart === false);
+        
+        // Test 6: Test mission start with ships
+        gameState.ships = 2;
+        gameState.research.exploration = 0;
+        const titanCheckWithShips = canStartMission('titan');
+        addResult('Titan can start with ships', titanCheckWithShips.canStart === true);
+        
+        // Test 7: Test starting a mission
+        const beforeMissions = gameState.activeMissions.length;
+        const result = startExplorationMission('titan');
+        addResult('Can start Titan mission', result === true);
+        addResult('Active missions increased', gameState.activeMissions.length === beforeMissions + 1);
+        
+        // Test 8: Test mission properties
+        const mission = gameState.activeMissions[0];
+        addResult('Mission has bodyId', mission && mission.bodyId === 'titan');
+        addResult('Mission has shipsUsed', mission && mission.shipsUsed === 1);
+        addResult('Mission has startDay', mission && mission.startDay !== undefined);
+        addResult('Mission has completionDay', mission && mission.completionDay !== undefined);
+        
+        // Test 9: Test canStartMission with active mission
+        const titanCheckAgain = canStartMission('titan');
+        addResult('Cannot start Titan mission again', titanCheckAgain.canStart === false);
+        
+        // Test 10: Test exploration level requirement
+        const iapetusCheck = canStartMission('iapetus');
+        addResult('Iapetus requires exploration level', iapetusCheck.canStart === false);
+        addResult('Reason mentions exploration level', iapetusCheck.reason && iapetusCheck.reason.includes('Exploration Research'));
+        
+        // Test 11: Test mission completion
+        const titan = celestialBodies.find(b => b.id === 'titan');
+        gameState.day = mission.completionDay;
+        const beforeExplored = gameState.exploredBodies.length;
+        completeMission(mission);
+        addResult('Mission completion increases explored count', gameState.exploredBodies.length === beforeExplored + 1);
+        addResult('Titan is marked as explored', gameState.exploredBodies.includes('titan'));
+        addResult('Mission removed from active missions', gameState.activeMissions.length === 0);
+        
+        // Test 12: Test rewards applied
+        addResult('Metal reward applied', gameState.metal >= titan.rewards.metal);
+        addResult('Production bonus applied', gameState.activeRewards.productionBonus === titan.rewards.bonus.value);
+        
+        // Test 13: Test cannot start explored body again
+        const titanCheckExplored = canStartMission('titan');
+        addResult('Cannot start Titan mission (already explored)', titanCheckExplored.canStart === false);
+        
+        console.log('All tests completed. Check results above.');
+    </script>
+</body>
+</html>
