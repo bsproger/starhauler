@@ -33,7 +33,10 @@ const gameState = {
     blueprints: [], // Array of blueprint objects
     // Items system
     items: [], // Array of produced items
-    itemIdCounter: 0 // Counter for generating unique item IDs
+    itemIdCounter: 0, // Counter for generating unique item IDs
+    // Celestial body exploration system
+    exploredBodies: [], // Array of celestial body IDs that have been explored
+    activeMissions: [] // Array of active exploration missions: [{bodyId, shipsUsed, startDay, completionDay}]
 };
 
 // Game constants and costs
@@ -94,6 +97,130 @@ const blueprintDefinitions = [
         productionCost: 300,
         productionTime: 1,
         bonus: { type: 'facilityProduction', value: 0.20 }
+    }
+];
+
+// Celestial body definitions (moons and planets in Saturn system)
+const celestialBodies = [
+    {
+        id: 'titan',
+        name: 'Titan',
+        type: 'moon',
+        description: 'Saturn\'s largest moon with a thick atmosphere',
+        distance: 1, // Mission duration in days
+        requiredShips: 1,
+        requiredExplorationLevel: 0,
+        rewards: {
+            metal: 500,
+            unstableElements: 0,
+            message: 'Titan exploration complete! Discovered nitrogen-rich atmosphere suitable for life support systems.',
+            bonus: { type: 'production', value: 0.05 } // +5% production permanently
+        }
+    },
+    {
+        id: 'enceladus',
+        name: 'Enceladus',
+        type: 'moon',
+        description: 'Ice-covered moon with subsurface ocean',
+        distance: 1,
+        requiredShips: 2,
+        requiredExplorationLevel: 1,
+        rewards: {
+            metal: 800,
+            unstableElements: 50,
+            message: 'Enceladus exploration complete! Found water ice geysers containing valuable minerals.',
+            bonus: { type: 'exploration', value: 0.10 } // +10% exploration effectiveness
+        }
+    },
+    {
+        id: 'rhea',
+        name: 'Rhea',
+        type: 'moon',
+        description: 'Saturn\'s second-largest moon with ancient cratered surface',
+        distance: 2,
+        requiredShips: 2,
+        requiredExplorationLevel: 0,
+        rewards: {
+            metal: 1000,
+            unstableElements: 0,
+            message: 'Rhea exploration complete! Ancient impact craters revealed rich mineral deposits.',
+            bonus: { type: 'production', value: 0.08 } // +8% production
+        }
+    },
+    {
+        id: 'iapetus',
+        name: 'Iapetus',
+        type: 'moon',
+        description: 'Moon with mysterious two-toned coloration',
+        distance: 3,
+        requiredShips: 3,
+        requiredExplorationLevel: 2,
+        rewards: {
+            metal: 1500,
+            unstableElements: 100,
+            message: 'Iapetus exploration complete! The mysterious dark material contains rare elements.',
+            bonus: { type: 'exploration', value: 0.15 } // +15% exploration
+        }
+    },
+    {
+        id: 'dione',
+        name: 'Dione',
+        type: 'moon',
+        description: 'Dense moon with bright ice cliffs',
+        distance: 2,
+        requiredShips: 2,
+        requiredExplorationLevel: 1,
+        rewards: {
+            metal: 1200,
+            unstableElements: 75,
+            message: 'Dione exploration complete! Ice cliffs contain crystalline structures with unique properties.',
+            bonus: { type: 'production', value: 0.10 } // +10% production
+        }
+    },
+    {
+        id: 'tethys',
+        name: 'Tethys',
+        type: 'moon',
+        description: 'Moon with massive canyon system',
+        distance: 2,
+        requiredShips: 1,
+        requiredExplorationLevel: 0,
+        rewards: {
+            metal: 700,
+            unstableElements: 25,
+            message: 'Tethys exploration complete! Canyon system provides natural shelter for mining operations.',
+            bonus: { type: 'facilityProduction', value: 0.05 } // +5% per facility
+        }
+    },
+    {
+        id: 'mimas',
+        name: 'Mimas',
+        type: 'moon',
+        description: 'Small moon with giant impact crater (Death Star moon)',
+        distance: 1,
+        requiredShips: 1,
+        requiredExplorationLevel: 0,
+        rewards: {
+            metal: 600,
+            unstableElements: 0,
+            message: 'Mimas exploration complete! The giant Herschel crater exposes deep subsurface materials.',
+            bonus: { type: 'exploration', value: 0.05 } // +5% exploration
+        }
+    },
+    {
+        id: 'hyperion',
+        name: 'Hyperion',
+        type: 'moon',
+        description: 'Irregularly shaped, spongy moon',
+        distance: 3,
+        requiredShips: 2,
+        requiredExplorationLevel: 2,
+        rewards: {
+            metal: 1300,
+            unstableElements: 150,
+            message: 'Hyperion exploration complete! Unique porous structure contains pockets of unstable elements.',
+            bonus: { type: 'exploration', value: 0.12 } // +12% exploration
+        }
     }
 ];
 
@@ -236,6 +363,112 @@ function establishRemoteFacility() {
 function getUnstableElementsRate() {
     // Each remote facility generates 0.5 unstable elements per second
     return gameState.remoteFacilities * 0.5;
+}
+
+// Celestial body exploration functions
+function canStartMission(bodyId) {
+    const body = celestialBodies.find(b => b.id === bodyId);
+    if (!body) return { canStart: false, reason: 'Body not found' };
+    
+    // Check if already explored
+    if (gameState.exploredBodies.includes(bodyId)) {
+        return { canStart: false, reason: 'Already explored' };
+    }
+    
+    // Check if mission already active
+    if (gameState.activeMissions.some(m => m.bodyId === bodyId)) {
+        return { canStart: false, reason: 'Mission already in progress' };
+    }
+    
+    // Check exploration research level
+    if (gameState.research.exploration < body.requiredExplorationLevel) {
+        return { canStart: false, reason: `Requires Exploration Research Level ${body.requiredExplorationLevel}` };
+    }
+    
+    // Check available ships
+    const usedShips = gameState.activeMissions.reduce((sum, m) => sum + m.shipsUsed, 0);
+    const availableShips = gameState.ships - usedShips;
+    if (availableShips < body.requiredShips) {
+        return { canStart: false, reason: `Requires ${body.requiredShips} available ships (${availableShips} available)` };
+    }
+    
+    return { canStart: true };
+}
+
+function startExplorationMission(bodyId) {
+    const body = celestialBodies.find(b => b.id === bodyId);
+    if (!body) return false;
+    
+    const canStart = canStartMission(bodyId);
+    if (!canStart.canStart) {
+        addLogEntry(`Cannot start mission to ${body.name}: ${canStart.reason}`);
+        return false;
+    }
+    
+    // Start the mission
+    const mission = {
+        bodyId: bodyId,
+        shipsUsed: body.requiredShips,
+        startDay: gameState.day,
+        completionDay: gameState.day + body.distance
+    };
+    
+    gameState.activeMissions.push(mission);
+    addLogEntry(`🚀 Exploration mission to ${body.name} launched! ${body.requiredShips} ships deployed for ${body.distance} days.`);
+    updateUI();
+    return true;
+}
+
+function completeMission(mission) {
+    const body = celestialBodies.find(b => b.id === mission.bodyId);
+    if (!body) return;
+    
+    // Mark as explored
+    gameState.exploredBodies.push(mission.bodyId);
+    
+    // Apply rewards
+    if (body.rewards.metal > 0) {
+        gameState.metal += body.rewards.metal;
+    }
+    if (body.rewards.unstableElements > 0) {
+        gameState.unstableElements += body.rewards.unstableElements;
+    }
+    if (body.rewards.bonus) {
+        const bonus = body.rewards.bonus;
+        if (bonus.type === 'production') {
+            gameState.activeRewards.productionBonus = (gameState.activeRewards.productionBonus || 0) + bonus.value;
+        } else if (bonus.type === 'exploration') {
+            gameState.activeRewards.explorationBonus = (gameState.activeRewards.explorationBonus || 0) + bonus.value;
+        } else if (bonus.type === 'facilityProduction') {
+            // For facility production bonus, we'll add it to the production bonus
+            gameState.activeRewards.productionBonus = (gameState.activeRewards.productionBonus || 0) + bonus.value;
+        }
+    }
+    
+    // Log completion with rewards
+    let rewardText = body.rewards.message;
+    if (body.rewards.metal > 0 || body.rewards.unstableElements > 0) {
+        rewardText += ' Gained: ';
+        const rewards = [];
+        if (body.rewards.metal > 0) rewards.push(`${body.rewards.metal} metal`);
+        if (body.rewards.unstableElements > 0) rewards.push(`${body.rewards.unstableElements} unstable elements`);
+        rewardText += rewards.join(', ') + '.';
+    }
+    addLogEntry(`🎉 ${rewardText}`);
+    
+    // Remove mission from active missions
+    gameState.activeMissions = gameState.activeMissions.filter(m => m.bodyId !== mission.bodyId);
+    
+    updateUI();
+}
+
+function checkMissionCompletion() {
+    // Check all active missions for completion
+    const completedMissions = gameState.activeMissions.filter(m => gameState.day >= m.completionDay);
+    
+    completedMissions.forEach(mission => {
+        completeMission(mission);
+    });
 }
 
 // Blueprint management functions
@@ -390,6 +623,77 @@ function assignItem(itemId) {
     updateUI();
 }
 
+// Update celestial bodies exploration UI
+function updateCelestialBodiesUI() {
+    const container = document.getElementById('celestial-bodies-list');
+    if (!container) return;
+    
+    let html = '';
+    
+    // Show available celestial bodies
+    celestialBodies.forEach(body => {
+        const isExplored = gameState.exploredBodies.includes(body.id);
+        const activeMission = gameState.activeMissions.find(m => m.bodyId === body.id);
+        const canStart = canStartMission(body.id);
+        
+        html += '<div class="celestial-body-item">';
+        html += `<div class="celestial-body-header">`;
+        html += `<strong>${body.name}</strong> `;
+        
+        if (isExplored) {
+            html += '<span class="status-explored">✓ Explored</span>';
+        } else if (activeMission) {
+            const progress = ((gameState.day - activeMission.startDay) / body.distance * 100).toFixed(0);
+            html += `<span class="status-exploring">🚀 In Progress (${progress}%)</span>`;
+        } else {
+            html += `<span class="status-unexplored">• Unexplored</span>`;
+        }
+        
+        html += '</div>';
+        html += `<div class="celestial-body-description">${body.description}</div>`;
+        html += `<div class="celestial-body-info">`;
+        html += `Distance: ${body.distance} day${body.distance > 1 ? 's' : ''} | `;
+        html += `Ships Required: ${body.requiredShips} | `;
+        html += `Exploration Level: ${body.requiredExplorationLevel}`;
+        html += `</div>`;
+        
+        // Show rewards for unexplored bodies
+        if (!isExplored && !activeMission) {
+            html += `<div class="celestial-body-rewards">`;
+            html += `<strong>Potential Rewards:</strong> `;
+            const rewards = [];
+            if (body.rewards.metal > 0) rewards.push(`${body.rewards.metal} metal`);
+            if (body.rewards.unstableElements > 0) rewards.push(`${body.rewards.unstableElements} unstable elements`);
+            if (body.rewards.bonus) {
+                const bonusType = body.rewards.bonus.type === 'production' || body.rewards.bonus.type === 'facilityProduction' ? 'Production' : 'Exploration';
+                rewards.push(`+${(body.rewards.bonus.value * 100).toFixed(0)}% ${bonusType}`);
+            }
+            html += rewards.join(', ');
+            html += `</div>`;
+        }
+        
+        // Show action button
+        if (!isExplored && !activeMission) {
+            const disabled = !canStart.canStart;
+            html += `<button class="action-btn celestial-btn" data-body-id="${body.id}" ${disabled ? 'disabled' : ''}>`;
+            html += disabled ? canStart.reason : 'Launch Mission';
+            html += `</button>`;
+        }
+        
+        html += '</div>';
+    });
+    
+    container.innerHTML = html;
+    
+    // Attach event listeners to buttons
+    document.querySelectorAll('.celestial-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const bodyId = this.getAttribute('data-body-id');
+            startExplorationMission(bodyId);
+        });
+    });
+}
+
 // Update UI
 function updateUI() {
     // Resources
@@ -450,6 +754,9 @@ function updateUI() {
     // Items
     updateItemsUI();
     
+    // Celestial bodies exploration
+    updateCelestialBodiesUI();
+    
     // Active rewards display
     updateActiveRewardsUI();
     
@@ -470,6 +777,16 @@ function updateUI() {
             unstableElementsRow.style.display = 'block';
         } else {
             unstableElementsRow.style.display = 'none';
+        }
+    }
+    
+    // Show/hide celestial bodies section when ships are available
+    const celestialBodiesSection = document.getElementById('celestial-bodies-section');
+    if (celestialBodiesSection) {
+        if (gameState.ships > 0) {
+            celestialBodiesSection.style.display = 'block';
+        } else {
+            celestialBodiesSection.style.display = 'none';
         }
     }
     
@@ -996,6 +1313,9 @@ function gameLoop() {
         // Attempt discovery of remote facility locations
         attemptDiscovery();
         
+        // Check for completed exploration missions
+        checkMissionCompletion();
+        
         // Random events (less frequent now that we have exploration events)
         if (Math.random() < 0.1 && gameState.ships > 0) {
             const events = [
@@ -1083,6 +1403,8 @@ function resetGame() {
         gameState.blueprints = [];
         gameState.items = [];
         gameState.itemIdCounter = 0;
+        gameState.exploredBodies = [];
+        gameState.activeMissions = [];
         
         // Clear log
         const logContent = document.getElementById('game-log');
@@ -1224,6 +1546,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 gameState.itemIdCounter = maxId;
+            }
+            // Ensure celestial body exploration exists for old saves
+            if (!gameState.exploredBodies) {
+                gameState.exploredBodies = [];
+            }
+            if (!gameState.activeMissions) {
+                gameState.activeMissions = [];
             }
             addLogEntry('Resuming from previous session...');
         } catch (e) {
